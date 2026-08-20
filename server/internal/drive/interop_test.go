@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/xensa/tally/internal/store"
 )
 
 // Cross-implementation guard: the Go and Dart peers must agree, byte for byte,
@@ -15,14 +17,19 @@ import (
 // divergence without live Google credentials. The Dart half lives in
 // app/test/snapshot_interop_test.dart and reads the same file.
 
-func fixtureBytes(t *testing.T) []byte {
+func fixtureFile(t *testing.T, name string) []byte {
 	t.Helper()
-	path := filepath.Join("..", "..", "..", "docs", "fixtures", "snapshot.example.json")
+	path := filepath.Join("..", "..", "..", "docs", "fixtures", name)
 	b, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("reading interop fixture: %v", err)
 	}
 	return b
+}
+
+func fixtureBytes(t *testing.T) []byte {
+	t.Helper()
+	return fixtureFile(t, "snapshot.example.json")
 }
 
 func TestInteropFixtureParses(t *testing.T) {
@@ -31,8 +38,8 @@ func TestInteropFixtureParses(t *testing.T) {
 		t.Fatalf("ParseSnapshot: %v", err)
 	}
 
-	if snap.Schema != 1 {
-		t.Errorf("schema = %d, want 1", snap.Schema)
+	if snap.Schema != 2 {
+		t.Errorf("schema = %d, want 2", snap.Schema)
 	}
 	if snap.DeviceID != "11111111-2222-4333-8444-555555555555" {
 		t.Errorf("device_id = %q", snap.DeviceID)
@@ -46,8 +53,45 @@ func TestInteropFixtureParses(t *testing.T) {
 	if len(snap.Categories) != 4 {
 		t.Fatalf("categories = %d, want 4", len(snap.Categories))
 	}
-	if len(snap.Transactions) != 5 {
-		t.Fatalf("transactions = %d, want 5", len(snap.Transactions))
+	if len(snap.Transactions) != 6 {
+		t.Fatalf("transactions = %d, want 6", len(snap.Transactions))
+	}
+	if len(snap.Accounts) != 4 {
+		t.Fatalf("accounts = %d, want 4", len(snap.Accounts))
+	}
+
+	accs := map[string]int{}
+	for i, a := range snap.Accounts {
+		accs[a.ID] = i
+	}
+
+	cash := snap.Accounts[accs["a1c7e2f0-0001-4a00-9000-000000000001"]]
+	if cash.Name != "Cash" || cash.Kind != "cash" || cash.Emoji != "💵" ||
+		cash.Color != "#4CAF7D" || cash.OpeningBalanceMinor != 0 ||
+		cash.SortOrder != 0 || cash.UpdatedAtMs != 1755000000000 || cash.DeletedAtMs != nil {
+		t.Errorf("cash account decoded wrong: %+v", cash)
+	}
+
+	// A card carrying debt: an unsigned decode on either side would wrap this
+	// into an enormous positive balance.
+	if got := snap.Accounts[accs["a1c7e2f0-0002-4a00-9000-000000000002"]].OpeningBalanceMinor; got != -125000 {
+		t.Errorf("negative opening balance = %d, want -125000", got)
+	}
+
+	// A renamed seed account keeps its literal name, and its opening balance
+	// is past double precision.
+	savings := snap.Accounts[accs["a1c7e2f0-0003-4a00-9000-000000000003"]]
+	if savings.Name != "Жамғарма" || savings.Kind != "savings" {
+		t.Errorf("renamed savings account decoded wrong: %+v", savings)
+	}
+	if savings.OpeningBalanceMinor != 9007199254740993 {
+		t.Errorf("opening balance = %d, want 9007199254740993 (precision lost?)", savings.OpeningBalanceMinor)
+	}
+
+	// A closed account arrives as a tombstone, not as an absence.
+	closed := snap.Accounts[accs["a1c7e2f0-0f01-4a00-9000-000000000f01"]]
+	if closed.DeletedAtMs == nil || *closed.DeletedAtMs != 1787158600000 {
+		t.Errorf("account tombstone = %v, want 1787158600000", closed.DeletedAtMs)
 	}
 
 	cats := map[string]int{}
@@ -84,6 +128,7 @@ func TestInteropFixtureParses(t *testing.T) {
 	shop := snap.Transactions[txs["aaaaaaaa-0000-4000-8000-000000000001"]]
 	if shop.Kind != "expense" || shop.AmountMinor != 24850 ||
 		shop.CategoryID != "c1a7e2f0-0001-4a00-9000-000000000001" ||
+		shop.AccountID != "a1c7e2f0-0002-4a00-9000-000000000002" || shop.ToAccountID != "" ||
 		shop.Note != "weekly shop" || shop.OccurredAt != "2026-08-18T09:30:00Z" ||
 		shop.Source != "app" || shop.CreatedAtMs != 1787000000000 ||
 		shop.UpdatedAtMs != 1787000000000 || shop.DeletedAtMs != nil {
@@ -110,8 +155,21 @@ func TestInteropFixtureParses(t *testing.T) {
 		t.Errorf("transaction tombstone = %v, want 1787157000000", del.DeletedAtMs)
 	}
 
+	// "Send to savings": a transfer carries both accounts and no category.
+	xfer := snap.Transactions[txs["aaaaaaaa-0000-4000-8000-000000000006"]]
+	if xfer.Kind != "transfer" || xfer.AmountMinor != 500000 || xfer.CategoryID != "" ||
+		xfer.AccountID != "a1c7e2f0-0002-4a00-9000-000000000002" ||
+		xfer.ToAccountID != "a1c7e2f0-0003-4a00-9000-000000000003" ||
+		xfer.Note != "oyiga jamgʻarma · в накопления" {
+		t.Errorf("transfer decoded wrong: %+v", xfer)
+	}
+	if !xfer.IsTransfer() {
+		t.Error("IsTransfer() = false on a transfer row")
+	}
+
 	if snap.Settings.ID != "settings" || snap.Settings.Currency != "UZS" ||
-		snap.Settings.Language != "ru" || snap.Settings.UpdatedAtMs != 1787155000000 {
+		snap.Settings.Language != "ru" || snap.Settings.UpdatedAtMs != 1787155000000 ||
+		snap.Settings.DefaultAccountID != "a1c7e2f0-0002-4a00-9000-000000000002" {
 		t.Errorf("settings decoded wrong: %+v", snap.Settings)
 	}
 }
@@ -133,10 +191,17 @@ func TestInteropFixtureRoundTrips(t *testing.T) {
 	}
 
 	if len(round.Categories) != len(snap.Categories) ||
-		len(round.Transactions) != len(snap.Transactions) {
-		t.Fatalf("round trip changed row counts: %d/%d vs %d/%d",
-			len(round.Categories), len(round.Transactions),
-			len(snap.Categories), len(snap.Transactions))
+		len(round.Transactions) != len(snap.Transactions) ||
+		len(round.Accounts) != len(snap.Accounts) {
+		t.Fatalf("round trip changed row counts: %d/%d/%d vs %d/%d/%d",
+			len(round.Accounts), len(round.Categories), len(round.Transactions),
+			len(snap.Accounts), len(snap.Categories), len(snap.Transactions))
+	}
+	for i, want := range snap.Accounts {
+		if got := round.Accounts[i]; got.OpeningBalanceMinor != want.OpeningBalanceMinor {
+			t.Errorf("account %s opening balance changed: %d -> %d",
+				want.ID, want.OpeningBalanceMinor, got.OpeningBalanceMinor)
+		}
 	}
 	if round.Settings.Language != "ru" || round.Settings.Currency != "UZS" {
 		t.Errorf("round trip lost settings: %+v", round.Settings)
@@ -144,6 +209,9 @@ func TestInteropFixtureRoundTrips(t *testing.T) {
 
 	for i, want := range snap.Transactions {
 		got := round.Transactions[i]
+		if got.AccountID != want.AccountID || got.ToAccountID != want.ToAccountID {
+			t.Errorf("transaction %s changed accounts: %+v -> %+v", want.ID, want, got)
+		}
 		if got.AmountMinor != want.AmountMinor || got.OccurredAt != want.OccurredAt {
 			t.Errorf("transaction %s changed: %+v -> %+v", want.ID, want, got)
 		}
@@ -171,7 +239,57 @@ func TestInteropFixtureSurvivesBatch(t *testing.T) {
 	if len(batch.Categories) != 4 {
 		t.Errorf("batch categories = %d, want 4", len(batch.Categories))
 	}
+	if len(batch.Transactions) != 6 {
+		t.Errorf("batch transactions = %d, want 6", len(batch.Transactions))
+	}
+	if len(batch.Accounts) != 4 {
+		t.Errorf("batch accounts = %d, want 4", len(batch.Accounts))
+	}
+}
+
+// A peer that has not been updated yet keeps publishing schema 1. Refusing to
+// read it would strand that device, so the pre-accounts fixture must still
+// parse and sanitize — with every transaction booked to the default account,
+// which is exactly where the local migration puts this peer's own old rows.
+func TestInteropV1FixtureStillReadable(t *testing.T) {
+	snap, err := ParseSnapshot(fixtureFile(t, "snapshot.v1.example.json"))
+	if err != nil {
+		t.Fatalf("ParseSnapshot on the v1 fixture: %v", err)
+	}
+	if snap.Schema != 1 {
+		t.Fatalf("schema = %d, want 1", snap.Schema)
+	}
+	if len(snap.Accounts) != 0 {
+		t.Fatalf("v1 fixture carried %d accounts", len(snap.Accounts))
+	}
+
+	batch, skipped := snap.Batch()
+	if len(skipped) != 0 {
+		t.Errorf("v1 fixture rows rejected by Batch(): %v", skipped)
+	}
 	if len(batch.Transactions) != 5 {
-		t.Errorf("batch transactions = %d, want 5", len(batch.Transactions))
+		t.Fatalf("batch transactions = %d, want 5", len(batch.Transactions))
+	}
+	for _, tx := range batch.Transactions {
+		if tx.AccountID != store.DefaultAccountID {
+			t.Errorf("transaction %s booked to %q, want the default account", tx.ID, tx.AccountID)
+		}
+		if tx.ToAccountID != "" {
+			t.Errorf("transaction %s gained a destination account", tx.ID)
+		}
+	}
+	// A v1 settings row names no default account, and Batch must leave it that
+	// way rather than inventing one. Filling in "cash" here would make the old
+	// peer look like it had actively chosen cash, and under last-write-wins a
+	// stale snapshot from the un-upgraded device would then silently overwrite
+	// an account the owner had picked in the app. Supplying the fallback is
+	// the store's job, where "" is read as "unchanged" — see
+	// TestMergeV1SettingsKeepsChosenDefaultAccount.
+	if len(batch.Settings) != 1 {
+		t.Fatalf("batch settings = %d, want 1", len(batch.Settings))
+	}
+	if batch.Settings[0].DefaultAccountID != "" {
+		t.Errorf("v1 settings default_account_id = %q, want it left empty",
+			batch.Settings[0].DefaultAccountID)
 	}
 }

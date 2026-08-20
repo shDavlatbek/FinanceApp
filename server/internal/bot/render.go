@@ -58,6 +58,49 @@ func renderCategories(p *i18n.Printer, cats []model.Category) string {
 	return sb.String()
 }
 
+// accountDisplayName applies the seed-name rule to an account: a seed account
+// is shown translated only while the owner has not renamed it.
+func accountDisplayName(p *i18n.Printer, a model.Account) string {
+	if store.IsUnrenamedSeedAccount(a) {
+		return p.SeedAccountName(a.Name)
+	}
+	return a.Name
+}
+
+func accountLabel(p *i18n.Printer, a model.Account) string {
+	return a.Emoji + " " + accountDisplayName(p, a)
+}
+
+// renderAccounts lists each account with its balance, then the total across
+// all of them — the "how much do I actually have" number.
+//
+// A balance is rendered with Money, not MoneySigned: a negative balance still
+// shows its minus (a card carrying debt must never look like credit), but a
+// positive one is just an amount — "+$125.50" would read as a change rather
+// than as what the account holds.
+func renderAccounts(p *i18n.Printer, currency string, balances []store.AccountBalance, def model.Account) string {
+	var sb strings.Builder
+	sb.WriteString(p.T("accounts_title") + "\n")
+	if len(balances) == 0 {
+		sb.WriteString(p.T("accounts_empty"))
+		return sb.String()
+	}
+	var total int64
+	for _, ab := range balances {
+		total += ab.BalanceMinor
+		fmt.Fprintf(&sb, "%s — %s\n", accountLabel(p, ab.Account), p.Money(ab.BalanceMinor, currency))
+	}
+	fmt.Fprintf(&sb, "\n%s", p.Tf("accounts_total", map[string]any{
+		"Amount": p.Money(total, currency),
+	}))
+	if def.ID != "" {
+		fmt.Fprintf(&sb, "\n\n%s", p.Tf("accounts_default_hint", map[string]any{
+			"Account": accountDisplayName(p, def),
+		}))
+	}
+	return sb.String()
+}
+
 // renderUndo confirms a removed entry. cat is nil when the category row has
 // gone missing, which is survivable — the amount is the important part.
 func renderUndo(p *i18n.Printer, currency string, t model.Transaction, cat *model.Category) string {

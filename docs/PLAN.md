@@ -1,8 +1,43 @@
 # Tally — build status
 
+## v3 (accounts + export/import) — IN PROGRESS, server side done
+
+Requested by the owner on 2026-08-20: accounts (cash / card / savings / investments),
+"send to savings" and "send to investments" as transfers, and export/import to a file.
+See the v3 amendment in `SPEC.md` and the v3 note in `ARCHITECTURE.md`.
+
+**Done and verified (Go server + shared contract):**
+
+| check | result |
+|---|---|
+| `go vet ./...` · `go build ./...` · `go test -count=1 ./...` | clean; api, bot, drive, i18n, store all pass |
+| accounts table, seed accounts, derived balances | new `accounts_test.go`, 8 tests |
+| pre-accounts DB migration (transactions table rebuild) | verified: rows keep their data, book to cash, `transfer` inserts, indexes recreated |
+| transfers excluded from summaries | pinned by `TestTransfersStayOutOfSummaries` |
+| snapshot schema 2 + accounts on the wire | interop fixture regenerated, Go half updated |
+| schema-1 snapshots still readable | new `snapshot.v1.example.json` + `TestInteropV1FixtureStillReadable` |
+| `/accounts` bot command in en/ru/uz | new `internal/bot/accounts_test.go` |
+
+**Not done — blocked.** The whole Flutter half: accounts UI, transfers in the entry
+sheet, export/import screens, the drift migration, the Dart side of snapshot schema 2,
+and the Dart half of the interop fixture. `app/lib/data/` (drift database,
+repositories, Drive sync engine) is **not in the repository** — the root `.gitignore`
+matched `data/` at any depth and silently excluded it, so a fresh clone cannot build
+the app. The pattern is fixed (anchored to `/data/`), but the files themselves still
+have to be committed from the machine that has them.
+
+Consequence to watch: **the fixture now carries schema 2 while the Dart side still
+expects schema 1**, so `app/test/snapshot_interop_test.dart` will fail until the Dart
+half is updated. That is the contract-first order the repo mandates, not an accident —
+but it does mean the app tests are red in the interim.
+
+Also unverified here: `flutter analyze` and `flutter test` were **not** run this round.
+Flutter is not installed in the environment the server work was done in.
+
+## v2 — verified 2026-08-20
+
 v2 is **built and verified**: Google Drive sync replaces the REST API, and the app plus the bot speak English, Russian and Uzbek. This file records what was actually tested, as opposed to claimed, and what is still unproven.
 
-## Verified on 2026-08-20
 
 Every check below was run directly against the tree, not taken from an agent's report.
 
@@ -47,6 +82,7 @@ Earlier round, still standing: the tab-ghosting fix in `app/lib/features/shell/a
 
 ## Next steps
 
-1. Do the live Google + Telegram pass above — it is the only remaining unknown of substance.
-2. First git commit: the repo is initialized but has **no commits yet**.
-3. Then budgets with Telegram warnings, per `SPEC.md`.
+1. **Commit `app/lib/data/`** — nothing else on the app side can move until it is in the repo.
+2. Finish the Flutter half of v3 (see the blocked list above), then re-run `flutter analyze` and `flutter test`.
+3. Do the live Google + Telegram pass — still the only remaining unknown of substance.
+4. Then budgets with Telegram warnings, per `SPEC.md`.

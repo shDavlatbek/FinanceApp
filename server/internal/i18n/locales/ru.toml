@@ -21,7 +21,8 @@ other = """
 Команды:
 /today  /week  /month — сводки
 /undo — удалить последнюю запись
-/categories — список категорий"""
+/categories — список категорий
+/accounts — балансы счетов"""
 
 [unauthorized]
 other = "⛔ Нет доступа."
@@ -141,6 +142,37 @@ other = "⚠️ Не удалось создать категорию."
 
 # --- seed category names ---------------------------------------------------
 # Совпадают со строками seedCategory* в ARB-каталогах приложения.
+
+# --- accounts --------------------------------------------------------------
+
+[accounts_title]
+other = "🏦 Счета"
+
+[accounts_total]
+other = "Всего: {{.Amount}}"
+
+[accounts_empty]
+other = "Счетов пока нет."
+
+[accounts_default_hint]
+other = "Новые записи попадают на счёт «{{.Account}}». Изменить можно в приложении."
+
+[error_accounts]
+other = "⚠️ Не удалось показать счета."
+
+# --- seed account names ----------------------------------------------------
+
+[acc_cash]
+other = "Наличные"
+
+[acc_card]
+other = "Карта"
+
+[acc_savings]
+other = "Накопления"
+
+[acc_investments]
+other = "Инвестиции"
 
 [cat_groceries]
 other = "Продукты"

@@ -177,6 +177,8 @@ func (b *Bot) handleCommand(ctx context.Context, chatID int64, text string, s se
 		b.handleUndo(ctx, chatID, s)
 	case "/categories":
 		b.handleCategories(ctx, chatID, s)
+	case "/accounts":
+		b.handleAccounts(ctx, chatID, s)
 	default:
 		b.send(ctx, chatID, s.p.T("unknown_command"), nil)
 	}
@@ -254,6 +256,25 @@ func (b *Bot) handleCategories(ctx context.Context, chatID int64, s session) {
 		return
 	}
 	b.send(ctx, chatID, renderCategories(p, cats), nil)
+}
+
+// handleAccounts lists every account with its balance and the running total,
+// and names the account new bot entries land in.
+func (b *Bot) handleAccounts(ctx context.Context, chatID int64, s session) {
+	p := s.p
+	balances, err := b.st.AccountBalances()
+	if err != nil {
+		log.Printf("bot: account balances: %v", err)
+		b.send(ctx, chatID, p.T("error_accounts"), nil)
+		return
+	}
+	// A missing default is not worth an error reply: the balances are still
+	// the answer to the question that was asked.
+	def, err := b.st.DefaultAccount()
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		log.Printf("bot: default account: %v", err)
+	}
+	b.send(ctx, chatID, renderAccounts(p, s.currency, balances, def), nil)
 }
 
 // handleEntry processes a free-text transaction message.
@@ -477,11 +498,21 @@ func (b *Bot) logTransaction(ctx context.Context, chatID int64, amountMinor int6
 	// Stored instants are always UTC; only the reported period is cut on the
 	// configured calendar.
 	now := time.Now().UTC()
+	// Every entry has to land in an account. The bot never asks which — that
+	// would cost the 3-second promise — so it books to the one chosen in the
+	// app and synced across in settings.default_account_id.
+	accountID := store.DefaultAccountID
+	if acc, err := b.st.DefaultAccount(); err == nil {
+		accountID = acc.ID
+	} else if !errors.Is(err, store.ErrNotFound) {
+		log.Printf("bot: default account: %v", err)
+	}
 	t := model.Transaction{
 		ID:          newUUID(),
 		Kind:        kind,
 		AmountMinor: amountMinor,
 		CategoryID:  cat.ID,
+		AccountID:   accountID,
 		Note:        note,
 		OccurredAt:  now.Format(model.CanonicalUTC),
 		Source:      model.SourceTelegram,
