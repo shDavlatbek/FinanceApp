@@ -75,6 +75,43 @@ var SeedCategories = []model.Category{
 	{ID: "c1a7e2f0-0104-4a00-9000-000000000104", Name: "Other income", Emoji: "➕", Color: "#8E8E93", Kind: model.KindIncome, SortOrder: 3, UpdatedAtMs: SeedUpdatedAtMs},
 }
 
+// DefaultAccountID is the seed account new installs book to until the owner
+// picks another in the app: cash is the one account everybody has.
+const DefaultAccountID = "a1c7e2f0-0001-4a00-9000-000000000001"
+
+// SeedAccounts are the FIXED-UUID accounts both app and server seed on first
+// run so they merge cleanly on first sync (contract). Savings and investments
+// are ordinary accounts — "send to savings" is a transfer into one of them.
+var SeedAccounts = []model.Account{
+	{ID: DefaultAccountID, Name: "Cash", Kind: model.AccountCash, Emoji: "💵", Color: "#4CAF7D", SortOrder: 0, UpdatedAtMs: SeedUpdatedAtMs},
+	{ID: "a1c7e2f0-0002-4a00-9000-000000000002", Name: "Card", Kind: model.AccountBank, Emoji: "💳", Color: "#5A9BE8", SortOrder: 1, UpdatedAtMs: SeedUpdatedAtMs},
+	{ID: "a1c7e2f0-0003-4a00-9000-000000000003", Name: "Savings", Kind: model.AccountSavings, Emoji: "🏦", Color: "#E8C95A", SortOrder: 2, UpdatedAtMs: SeedUpdatedAtMs},
+	{ID: "a1c7e2f0-0004-4a00-9000-000000000004", Name: "Investments", Kind: model.AccountInvestment, Emoji: "📈", Color: "#9B7DE8", SortOrder: 3, UpdatedAtMs: SeedUpdatedAtMs},
+}
+
+// seedAccountNames indexes SeedAccounts by id for the display-name rule.
+var seedAccountNames = func() map[string]string {
+	m := make(map[string]string, len(SeedAccounts))
+	for _, a := range SeedAccounts {
+		m[a.ID] = a.Name
+	}
+	return m
+}()
+
+// SeedAccountName returns the canonical English name of a seed account id.
+func SeedAccountName(id string) (string, bool) {
+	n, ok := seedAccountNames[id]
+	return n, ok
+}
+
+// IsUnrenamedSeedAccount is IsUnrenamedSeed for accounts: a seed account is
+// localized for display ONLY while it still carries its canonical English
+// name. The rule is the contract's, shared with categories.
+func IsUnrenamedSeedAccount(a model.Account) bool {
+	canonical, ok := seedAccountNames[a.ID]
+	return ok && a.Name == canonical
+}
+
 // seedNames indexes SeedCategories by id for the display-name rule below.
 var seedNames = func() map[string]string {
 	m := make(map[string]string, len(SeedCategories))
@@ -163,6 +200,15 @@ func (s *Store) fireWriteHook() {
 	}
 }
 
+// transactionIndexDDL is applied both by the base migration and after a table
+// rebuild, which drops the indexes along with the old table.
+const transactionIndexDDL = `
+CREATE INDEX IF NOT EXISTS idx_transactions_server_seq ON transactions(server_seq);
+CREATE INDEX IF NOT EXISTS idx_transactions_occurred_at ON transactions(occurred_at);
+CREATE INDEX IF NOT EXISTS idx_transactions_account ON transactions(account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_to_account ON transactions(to_account_id);
+`
+
 func (s *Store) migrate() error {
 	const schema = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -182,11 +228,26 @@ CREATE TABLE IF NOT EXISTS categories (
 	dirty         INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_categories_server_seq ON categories(server_seq);
+CREATE TABLE IF NOT EXISTS accounts (
+	id                    TEXT PRIMARY KEY,
+	name                  TEXT NOT NULL,
+	kind                  TEXT NOT NULL CHECK (kind IN ('cash','bank','savings','investment')),
+	emoji                 TEXT NOT NULL,
+	color                 TEXT NOT NULL,
+	opening_balance_minor INTEGER NOT NULL DEFAULT 0,
+	sort_order            INTEGER NOT NULL,
+	updated_at_ms         INTEGER NOT NULL,
+	deleted_at_ms         INTEGER,
+	server_seq            INTEGER NOT NULL,
+	dirty                 INTEGER NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS transactions (
 	id            TEXT PRIMARY KEY,
-	kind          TEXT NOT NULL CHECK (kind IN ('income','expense')),
+	kind          TEXT NOT NULL CHECK (kind IN ('income','expense','transfer')),
 	amount_minor  INTEGER NOT NULL,
 	category_id   TEXT NOT NULL,
+	account_id    TEXT NOT NULL DEFAULT '',
+	to_account_id TEXT NOT NULL DEFAULT '',
 	note          TEXT NOT NULL DEFAULT '',
 	occurred_at   TEXT NOT NULL,
 	source        TEXT NOT NULL CHECK (source IN ('app','telegram')),
@@ -196,15 +257,14 @@ CREATE TABLE IF NOT EXISTS transactions (
 	server_seq    INTEGER NOT NULL,
 	dirty         INTEGER NOT NULL DEFAULT 0
 );
-CREATE INDEX IF NOT EXISTS idx_transactions_server_seq ON transactions(server_seq);
-CREATE INDEX IF NOT EXISTS idx_transactions_occurred_at ON transactions(occurred_at);
 CREATE TABLE IF NOT EXISTS settings (
-	id            TEXT PRIMARY KEY,
-	currency      TEXT NOT NULL,
-	language      TEXT NOT NULL DEFAULT '',
-	updated_at_ms INTEGER NOT NULL,
-	server_seq    INTEGER NOT NULL,
-	dirty         INTEGER NOT NULL DEFAULT 0
+	id                 TEXT PRIMARY KEY,
+	currency           TEXT NOT NULL,
+	language           TEXT NOT NULL DEFAULT '',
+	default_account_id TEXT NOT NULL DEFAULT '',
+	updated_at_ms      INTEGER NOT NULL,
+	server_seq         INTEGER NOT NULL,
+	dirty              INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS aliases (
 	word        TEXT PRIMARY KEY,
@@ -223,6 +283,7 @@ INSERT INTO meta (k, v) VALUES ('last_seq', '0') ON CONFLICT(k) DO NOTHING;
 		{"categories", "dirty", "ALTER TABLE categories ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0"},
 		{"transactions", "dirty", "ALTER TABLE transactions ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0"},
 		{"settings", "dirty", "ALTER TABLE settings ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0"},
+		{"settings", "default_account_id", "ALTER TABLE settings ADD COLUMN default_account_id TEXT NOT NULL DEFAULT ''"},
 	} {
 		has, err := s.hasColumn(col.table, col.name)
 		if err != nil {
@@ -233,6 +294,27 @@ INSERT INTO meta (k, v) VALUES ('last_seq', '0') ON CONFLICT(k) DO NOTHING;
 				return fmt.Errorf("migrate %s.%s: %w", col.table, col.name, err)
 			}
 		}
+	}
+	// v2 → v3: accounts. transactions.kind gained 'transfer' and the table
+	// gained account_id / to_account_id, but SQLite cannot ALTER a CHECK
+	// constraint — the only way to widen `kind` on a database created before
+	// accounts existed is to rebuild the table. The missing account_id column
+	// is the tell; the rebuild books every pre-existing row to the default
+	// (cash) account, which is exactly what the app's own migration does, so
+	// the two peers reach the same answer without either publishing anything.
+	hasAccountCol, err := s.hasColumn("transactions", "account_id")
+	if err != nil {
+		return err
+	}
+	if !hasAccountCol {
+		if err := s.rebuildTransactions(); err != nil {
+			return err
+		}
+	}
+	// Indexes belong to the table, so a rebuild takes them with it; applying
+	// them here covers the fresh and the rebuilt path alike.
+	if _, err := s.db.Exec(transactionIndexDDL); err != nil {
+		return fmt.Errorf("migrate transaction indexes: %w", err)
 	}
 	// Unstick a settings row still carrying the old seed timestamp. Earlier
 	// builds seeded the singleton at SeedUpdatedAtMs — the very value the app
@@ -245,6 +327,59 @@ INSERT INTO meta (k, v) VALUES ('last_seq', '0') ON CONFLICT(k) DO NOTHING;
 		return fmt.Errorf("migrate settings placeholder: %w", err)
 	}
 	return nil
+}
+
+// rebuildTransactions recreates the transactions table in its accounts-aware
+// shape and copies every existing row across, booking each to the default
+// account. It is the SQLite rename-copy-drop procedure, needed because the
+// CHECK on `kind` cannot be widened in place.
+//
+// Rows keep their updated_at_ms and their dirty flag: gaining an account_id
+// is not an edit the peers need to hear about, and republishing the whole
+// history would say nothing new under last-write-wins anyway.
+func (s *Store) rebuildTransactions() error {
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`ALTER TABLE transactions RENAME TO transactions_old`); err != nil {
+		return fmt.Errorf("rebuild transactions: rename: %w", err)
+	}
+	if _, err := tx.Exec(`
+CREATE TABLE transactions (
+	id            TEXT PRIMARY KEY,
+	kind          TEXT NOT NULL CHECK (kind IN ('income','expense','transfer')),
+	amount_minor  INTEGER NOT NULL,
+	category_id   TEXT NOT NULL,
+	account_id    TEXT NOT NULL DEFAULT '',
+	to_account_id TEXT NOT NULL DEFAULT '',
+	note          TEXT NOT NULL DEFAULT '',
+	occurred_at   TEXT NOT NULL,
+	source        TEXT NOT NULL CHECK (source IN ('app','telegram')),
+	created_at_ms INTEGER NOT NULL,
+	updated_at_ms INTEGER NOT NULL,
+	deleted_at_ms INTEGER,
+	server_seq    INTEGER NOT NULL,
+	dirty         INTEGER NOT NULL DEFAULT 0
+)`); err != nil {
+		return fmt.Errorf("rebuild transactions: create: %w", err)
+	}
+	if _, err := tx.Exec(`
+INSERT INTO transactions (id, kind, amount_minor, category_id, account_id, to_account_id,
+                          note, occurred_at, source, created_at_ms, updated_at_ms,
+                          deleted_at_ms, server_seq, dirty)
+SELECT id, kind, amount_minor, category_id, ?, '',
+       note, occurred_at, source, created_at_ms, updated_at_ms,
+       deleted_at_ms, server_seq, dirty
+FROM transactions_old`, DefaultAccountID); err != nil {
+		return fmt.Errorf("rebuild transactions: copy: %w", err)
+	}
+	if _, err := tx.Exec(`DROP TABLE transactions_old`); err != nil {
+		return fmt.Errorf("rebuild transactions: drop: %w", err)
+	}
+	return tx.Commit()
 }
 
 func (s *Store) hasColumn(table, column string) (bool, error) {
@@ -291,6 +426,26 @@ func (s *Store) seed(defaultCurrency string) error {
 			}
 		}
 	}
+	// The accounts table is new in v3, so this branch also runs the first time
+	// an existing database is opened by a build that knows about accounts.
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM accounts`).Scan(&n); err != nil {
+		return err
+	}
+	if n == 0 {
+		for _, a := range SeedAccounts {
+			seq, err := nextSeq(tx)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.Exec(
+				`INSERT INTO accounts (id, name, kind, emoji, color, opening_balance_minor, sort_order, updated_at_ms, deleted_at_ms, server_seq, dirty)
+				 VALUES (?,?,?,?,?,?,?,?,NULL,?,0)`,
+				a.ID, a.Name, a.Kind, a.Emoji, a.Color, a.OpeningBalanceMinor, a.SortOrder, a.UpdatedAtMs, seq,
+			); err != nil {
+				return err
+			}
+		}
+	}
 	if err := tx.QueryRow(`SELECT COUNT(*) FROM settings`).Scan(&n); err != nil {
 		return err
 	}
@@ -300,11 +455,20 @@ func (s *Store) seed(defaultCurrency string) error {
 			return err
 		}
 		if _, err := tx.Exec(
-			`INSERT INTO settings (id, currency, language, updated_at_ms, server_seq, dirty) VALUES (?,?,'',?,?,0)`,
-			model.SettingsID, defaultCurrency, int64(SettingsUnsetMs), seq,
+			`INSERT INTO settings (id, currency, language, default_account_id, updated_at_ms, server_seq, dirty) VALUES (?,?,'',?,?,?,0)`,
+			model.SettingsID, defaultCurrency, DefaultAccountID, int64(SettingsUnsetMs), seq,
 		); err != nil {
 			return err
 		}
+	}
+	// An upgraded settings row arrives with an empty default_account_id (the
+	// ALTER default). Fill it in without touching updated_at_ms: this is local
+	// normalization, not a choice the owner made, so it must not win a LWW
+	// race against a real pick already made on the phone.
+	if _, err := tx.Exec(
+		`UPDATE settings SET default_account_id = ? WHERE id = ? AND default_account_id = ''`,
+		DefaultAccountID, model.SettingsID); err != nil {
+		return err
 	}
 	return tx.Commit()
 }
@@ -373,6 +537,7 @@ func (s *Store) SetMeta(key, value string) error {
 // Batch is a set of rows arriving from a peer's Drive snapshot. Several
 // settings rows may be present (one per peer file); LWW picks the newest.
 type Batch struct {
+	Accounts     []model.Account
 	Categories   []model.Category
 	Transactions []model.Transaction
 	Settings     []model.Settings
@@ -380,12 +545,14 @@ type Batch struct {
 
 // Empty reports whether the batch carries no rows at all.
 func (b Batch) Empty() bool {
-	return len(b.Categories) == 0 && len(b.Transactions) == 0 && len(b.Settings) == 0
+	return len(b.Accounts) == 0 && len(b.Categories) == 0 &&
+		len(b.Transactions) == 0 && len(b.Settings) == 0
 }
 
 // Snapshot is a complete dump of this peer's local state, tombstones
 // included — exactly what gets serialized into the peer's Drive file.
 type Snapshot struct {
+	Accounts     []model.Account
 	Categories   []model.Category
 	Transactions []model.Transaction
 	Settings     model.Settings
@@ -405,6 +572,15 @@ func (s *Store) MergeRemote(b Batch) (int, error) {
 	defer tx.Rollback()
 
 	applied := 0
+	// Accounts first: a transaction referencing a brand-new account should not
+	// be able to land in a pass where the account itself has not yet arrived.
+	for _, a := range b.Accounts {
+		n, err := applyAccount(tx, a, false)
+		if err != nil {
+			return 0, err
+		}
+		applied += n
+	}
 	for _, c := range b.Categories {
 		n, err := applyCategory(tx, c, false)
 		if err != nil {
@@ -436,6 +612,7 @@ func (s *Store) MergeRemote(b Batch) (int, error) {
 // singleton settings row. It is the source of the Drive snapshot.
 func (s *Store) FullState() (Snapshot, error) {
 	var snap Snapshot
+	snap.Accounts = []model.Account{}
 	snap.Categories = []model.Category{}
 	snap.Transactions = []model.Transaction{}
 
@@ -444,6 +621,30 @@ func (s *Store) FullState() (Snapshot, error) {
 		return snap, err
 	}
 	defer tx.Rollback()
+
+	arows, err := tx.Query(
+		`SELECT id, name, kind, emoji, color, opening_balance_minor, sort_order, updated_at_ms, deleted_at_ms
+		 FROM accounts ORDER BY sort_order, id`)
+	if err != nil {
+		return snap, err
+	}
+	for arows.Next() {
+		var a model.Account
+		var del sql.NullInt64
+		if err := arows.Scan(&a.ID, &a.Name, &a.Kind, &a.Emoji, &a.Color, &a.OpeningBalanceMinor,
+			&a.SortOrder, &a.UpdatedAtMs, &del); err != nil {
+			arows.Close()
+			return snap, err
+		}
+		if del.Valid {
+			a.DeletedAtMs = &del.Int64
+		}
+		snap.Accounts = append(snap.Accounts, a)
+	}
+	arows.Close()
+	if err := arows.Err(); err != nil {
+		return snap, err
+	}
 
 	rows, err := tx.Query(
 		`SELECT id, name, emoji, color, kind, sort_order, updated_at_ms, deleted_at_ms
@@ -469,7 +670,7 @@ func (s *Store) FullState() (Snapshot, error) {
 	}
 
 	trows, err := tx.Query(
-		`SELECT id, kind, amount_minor, category_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms
+		`SELECT id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms
 		 FROM transactions ORDER BY occurred_at, id`)
 	if err != nil {
 		return snap, err
@@ -477,8 +678,8 @@ func (s *Store) FullState() (Snapshot, error) {
 	for trows.Next() {
 		var t model.Transaction
 		var del sql.NullInt64
-		if err := trows.Scan(&t.ID, &t.Kind, &t.AmountMinor, &t.CategoryID, &t.Note, &t.OccurredAt,
-			&t.Source, &t.CreatedAtMs, &t.UpdatedAtMs, &del); err != nil {
+		if err := trows.Scan(&t.ID, &t.Kind, &t.AmountMinor, &t.CategoryID, &t.AccountID, &t.ToAccountID,
+			&t.Note, &t.OccurredAt, &t.Source, &t.CreatedAtMs, &t.UpdatedAtMs, &del); err != nil {
 			trows.Close()
 			return snap, err
 		}
@@ -492,8 +693,9 @@ func (s *Store) FullState() (Snapshot, error) {
 		return snap, err
 	}
 
-	err = tx.QueryRow(`SELECT id, currency, language, updated_at_ms FROM settings WHERE id = ?`, model.SettingsID).
-		Scan(&snap.Settings.ID, &snap.Settings.Currency, &snap.Settings.Language, &snap.Settings.UpdatedAtMs)
+	err = tx.QueryRow(`SELECT id, currency, language, default_account_id, updated_at_ms FROM settings WHERE id = ?`, model.SettingsID).
+		Scan(&snap.Settings.ID, &snap.Settings.Currency, &snap.Settings.Language,
+			&snap.Settings.DefaultAccountID, &snap.Settings.UpdatedAtMs)
 	if err != nil {
 		return snap, err
 	}
@@ -504,7 +706,8 @@ func (s *Store) FullState() (Snapshot, error) {
 func (s *Store) HasDirty() (bool, error) {
 	var n int
 	err := s.db.QueryRow(`
-		SELECT (SELECT COUNT(*) FROM categories   WHERE dirty = 1)
+		SELECT (SELECT COUNT(*) FROM accounts     WHERE dirty = 1)
+		     + (SELECT COUNT(*) FROM categories   WHERE dirty = 1)
 		     + (SELECT COUNT(*) FROM transactions WHERE dirty = 1)
 		     + (SELECT COUNT(*) FROM settings     WHERE dirty = 1)`).Scan(&n)
 	return n > 0, err
@@ -520,6 +723,12 @@ func (s *Store) ClearDirty(snap Snapshot) error {
 	}
 	defer tx.Rollback()
 
+	for _, a := range snap.Accounts {
+		if _, err := tx.Exec(
+			`UPDATE accounts SET dirty = 0 WHERE id = ? AND updated_at_ms = ?`, a.ID, a.UpdatedAtMs); err != nil {
+			return err
+		}
+	}
 	for _, c := range snap.Categories {
 		if _, err := tx.Exec(
 			`UPDATE categories SET dirty = 0 WHERE id = ? AND updated_at_ms = ?`, c.ID, c.UpdatedAtMs); err != nil {
@@ -561,6 +770,33 @@ func dirtyInt(dirty bool) int {
 	return 0
 }
 
+func applyAccount(tx *sql.Tx, a model.Account, dirty bool) (int, error) {
+	apply, insert, err := wins(tx, "accounts", a.ID, a.UpdatedAtMs)
+	if err != nil || !apply {
+		return 0, err
+	}
+	seq, err := nextSeq(tx)
+	if err != nil {
+		return 0, err
+	}
+	d := dirtyInt(dirty)
+	if insert {
+		_, err = tx.Exec(
+			`INSERT INTO accounts (id, name, kind, emoji, color, opening_balance_minor, sort_order, updated_at_ms, deleted_at_ms, server_seq, dirty)
+			 VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+			a.ID, a.Name, a.Kind, a.Emoji, a.Color, a.OpeningBalanceMinor, a.SortOrder, a.UpdatedAtMs, a.DeletedAtMs, seq, d)
+	} else {
+		_, err = tx.Exec(
+			`UPDATE accounts SET name=?, kind=?, emoji=?, color=?, opening_balance_minor=?, sort_order=?, updated_at_ms=?, deleted_at_ms=?, server_seq=?, dirty=?
+			 WHERE id=?`,
+			a.Name, a.Kind, a.Emoji, a.Color, a.OpeningBalanceMinor, a.SortOrder, a.UpdatedAtMs, a.DeletedAtMs, seq, d, a.ID)
+	}
+	if err != nil {
+		return 0, err
+	}
+	return 1, nil
+}
+
 func applyCategory(tx *sql.Tx, c model.Category, dirty bool) (int, error) {
 	apply, insert, err := wins(tx, "categories", c.ID, c.UpdatedAtMs)
 	if err != nil || !apply {
@@ -600,14 +836,14 @@ func applyTransaction(tx *sql.Tx, t model.Transaction, dirty bool) (int, error) 
 	d := dirtyInt(dirty)
 	if insert {
 		_, err = tx.Exec(
-			`INSERT INTO transactions (id, kind, amount_minor, category_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms, server_seq, dirty)
-			 VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-			t.ID, t.Kind, t.AmountMinor, t.CategoryID, t.Note, t.OccurredAt, t.Source, t.CreatedAtMs, t.UpdatedAtMs, t.DeletedAtMs, seq, d)
+			`INSERT INTO transactions (id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms, server_seq, dirty)
+			 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			t.ID, t.Kind, t.AmountMinor, t.CategoryID, t.AccountID, t.ToAccountID, t.Note, t.OccurredAt, t.Source, t.CreatedAtMs, t.UpdatedAtMs, t.DeletedAtMs, seq, d)
 	} else {
 		_, err = tx.Exec(
-			`UPDATE transactions SET kind=?, amount_minor=?, category_id=?, note=?, occurred_at=?, source=?, created_at_ms=?, updated_at_ms=?, deleted_at_ms=?, server_seq=?, dirty=?
+			`UPDATE transactions SET kind=?, amount_minor=?, category_id=?, account_id=?, to_account_id=?, note=?, occurred_at=?, source=?, created_at_ms=?, updated_at_ms=?, deleted_at_ms=?, server_seq=?, dirty=?
 			 WHERE id=?`,
-			t.Kind, t.AmountMinor, t.CategoryID, t.Note, t.OccurredAt, t.Source, t.CreatedAtMs, t.UpdatedAtMs, t.DeletedAtMs, seq, d, t.ID)
+			t.Kind, t.AmountMinor, t.CategoryID, t.AccountID, t.ToAccountID, t.Note, t.OccurredAt, t.Source, t.CreatedAtMs, t.UpdatedAtMs, t.DeletedAtMs, seq, d, t.ID)
 	}
 	if err != nil {
 		return 0, err
@@ -617,6 +853,21 @@ func applyTransaction(tx *sql.Tx, t model.Transaction, dirty bool) (int, error) 
 
 func applySettings(tx *sql.Tx, st model.Settings, dirty bool) (int, error) {
 	st.ID = model.SettingsID
+	// A peer that predates accounts sends no default_account_id at all. Taking
+	// its empty string literally would leave the bot with nowhere to book, so
+	// an absent value means "unchanged" rather than "cleared".
+	if st.DefaultAccountID == "" {
+		var existing string
+		err := tx.QueryRow(`SELECT default_account_id FROM settings WHERE id = ?`, st.ID).Scan(&existing)
+		switch {
+		case err == nil && existing != "":
+			st.DefaultAccountID = existing
+		case err == nil, errors.Is(err, sql.ErrNoRows):
+			st.DefaultAccountID = DefaultAccountID
+		default:
+			return 0, err
+		}
+	}
 	apply, insert, err := wins(tx, "settings", st.ID, st.UpdatedAtMs)
 	if err != nil || !apply {
 		return 0, err
@@ -627,11 +878,11 @@ func applySettings(tx *sql.Tx, st model.Settings, dirty bool) (int, error) {
 	}
 	d := dirtyInt(dirty)
 	if insert {
-		_, err = tx.Exec(`INSERT INTO settings (id, currency, language, updated_at_ms, server_seq, dirty) VALUES (?,?,?,?,?,?)`,
-			st.ID, st.Currency, st.Language, st.UpdatedAtMs, seq, d)
+		_, err = tx.Exec(`INSERT INTO settings (id, currency, language, default_account_id, updated_at_ms, server_seq, dirty) VALUES (?,?,?,?,?,?,?)`,
+			st.ID, st.Currency, st.Language, st.DefaultAccountID, st.UpdatedAtMs, seq, d)
 	} else {
-		_, err = tx.Exec(`UPDATE settings SET currency=?, language=?, updated_at_ms=?, server_seq=?, dirty=? WHERE id=?`,
-			st.Currency, st.Language, st.UpdatedAtMs, seq, d, st.ID)
+		_, err = tx.Exec(`UPDATE settings SET currency=?, language=?, default_account_id=?, updated_at_ms=?, server_seq=?, dirty=? WHERE id=?`,
+			st.Currency, st.Language, st.DefaultAccountID, st.UpdatedAtMs, seq, d, st.ID)
 	}
 	if err != nil {
 		return 0, err
@@ -657,6 +908,36 @@ func (s *Store) InsertCategory(c model.Category) error {
 	return s.applyLocal(func(tx *sql.Tx) error {
 		_, err := applyCategory(tx, c, true)
 		return err
+	})
+}
+
+// InsertAccount inserts (or updates) an account through the LWW path (dirty).
+func (s *Store) InsertAccount(a model.Account) error {
+	return s.applyLocal(func(tx *sql.Tx) error {
+		_, err := applyAccount(tx, a, true)
+		return err
+	})
+}
+
+// SoftDeleteAccount tombstones an account. Transactions already booked to it
+// keep pointing at it — the tombstone is what peers merge, and history must
+// not silently lose entries because a wallet was closed.
+func (s *Store) SoftDeleteAccount(id string, nowMs int64) error {
+	return s.applyLocal(func(tx *sql.Tx) error {
+		seq, err := nextSeq(tx)
+		if err != nil {
+			return err
+		}
+		res, err := tx.Exec(
+			`UPDATE accounts SET deleted_at_ms = ?, updated_at_ms = ?, server_seq = ?, dirty = 1 WHERE id = ?`,
+			nowMs, nowMs, seq, id)
+		if err != nil {
+			return err
+		}
+		if n, _ := res.RowsAffected(); n == 0 {
+			return ErrNotFound
+		}
+		return nil
 	})
 }
 
@@ -763,8 +1044,8 @@ func (s *Store) applyLocal(fn func(*sql.Tx) error) error {
 // Settings returns the singleton settings row.
 func (s *Store) Settings() (model.Settings, error) {
 	var st model.Settings
-	err := s.db.QueryRow(`SELECT id, currency, language, updated_at_ms FROM settings WHERE id = ?`, model.SettingsID).
-		Scan(&st.ID, &st.Currency, &st.Language, &st.UpdatedAtMs)
+	err := s.db.QueryRow(`SELECT id, currency, language, default_account_id, updated_at_ms FROM settings WHERE id = ?`, model.SettingsID).
+		Scan(&st.ID, &st.Currency, &st.Language, &st.DefaultAccountID, &st.UpdatedAtMs)
 	if errors.Is(err, sql.ErrNoRows) {
 		return st, ErrNotFound
 	}
@@ -836,10 +1117,13 @@ type CategoryTotal struct {
 }
 
 // Summary holds aggregates for a period.
+//
+// Transfers contribute to none of these: moving money between the owner's own
+// accounts is not income, not spending, and not an entry worth counting.
 type Summary struct {
 	Income      int64
 	Expenses    int64
-	Count       int64           // non-deleted transactions in the period
+	Count       int64           // non-deleted, non-transfer transactions in the period
 	TopExpenses []CategoryTotal // top-5 expense categories by amount, desc
 }
 
@@ -852,7 +1136,7 @@ func (s *Store) PeriodSummary(from, to time.Time) (Summary, error) {
 		`SELECT
 			COALESCE(SUM(CASE WHEN kind = 'income' THEN amount_minor ELSE 0 END), 0),
 			COALESCE(SUM(CASE WHEN kind = 'expense' THEN amount_minor ELSE 0 END), 0),
-			COUNT(*)
+			COALESCE(SUM(CASE WHEN kind <> 'transfer' THEN 1 ELSE 0 END), 0)
 		 FROM transactions
 		 WHERE deleted_at_ms IS NULL AND occurred_at >= ? AND occurred_at < ?`,
 		fromS, toS).Scan(&sum.Income, &sum.Expenses, &sum.Count)
@@ -894,16 +1178,20 @@ func (s *Store) CategoryPeriodTotal(categoryID string, from, to time.Time) (int6
 	return total, err
 }
 
-// LastTransaction returns the most recent non-deleted transaction (any
+// LastTransaction returns the most recent non-deleted income or expense (any
 // source), by created_at_ms then server_seq.
+//
+// Transfers are excluded on purpose: /undo reports what it removed as
+// "amount • category", and a transfer has no category. Undoing a transfer is
+// done in the app, where both of its accounts can be shown.
 func (s *Store) LastTransaction() (model.Transaction, error) {
 	var t model.Transaction
 	var del sql.NullInt64
 	err := s.db.QueryRow(
-		`SELECT id, kind, amount_minor, category_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms
-		 FROM transactions WHERE deleted_at_ms IS NULL
+		`SELECT id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms
+		 FROM transactions WHERE deleted_at_ms IS NULL AND kind <> 'transfer'
 		 ORDER BY created_at_ms DESC, server_seq DESC LIMIT 1`).
-		Scan(&t.ID, &t.Kind, &t.AmountMinor, &t.CategoryID, &t.Note, &t.OccurredAt, &t.Source, &t.CreatedAtMs, &t.UpdatedAtMs, &del)
+		Scan(&t.ID, &t.Kind, &t.AmountMinor, &t.CategoryID, &t.AccountID, &t.ToAccountID, &t.Note, &t.OccurredAt, &t.Source, &t.CreatedAtMs, &t.UpdatedAtMs, &del)
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, ErrNotFound
 	}
@@ -911,6 +1199,135 @@ func (s *Store) LastTransaction() (model.Transaction, error) {
 		t.DeletedAtMs = &del.Int64
 	}
 	return t, err
+}
+
+// ListAccounts returns non-deleted accounts ordered by sort_order then name.
+func (s *Store) ListAccounts() ([]model.Account, error) {
+	rows, err := s.db.Query(
+		`SELECT id, name, kind, emoji, color, opening_balance_minor, sort_order, updated_at_ms, deleted_at_ms
+		 FROM accounts WHERE deleted_at_ms IS NULL ORDER BY sort_order, name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.Account
+	for rows.Next() {
+		var a model.Account
+		var del sql.NullInt64
+		if err := rows.Scan(&a.ID, &a.Name, &a.Kind, &a.Emoji, &a.Color, &a.OpeningBalanceMinor,
+			&a.SortOrder, &a.UpdatedAtMs, &del); err != nil {
+			return nil, err
+		}
+		if del.Valid {
+			a.DeletedAtMs = &del.Int64
+		}
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// GetAccount returns an account by id (deleted or not).
+func (s *Store) GetAccount(id string) (model.Account, error) {
+	var a model.Account
+	var del sql.NullInt64
+	err := s.db.QueryRow(
+		`SELECT id, name, kind, emoji, color, opening_balance_minor, sort_order, updated_at_ms, deleted_at_ms
+		 FROM accounts WHERE id = ?`, id).
+		Scan(&a.ID, &a.Name, &a.Kind, &a.Emoji, &a.Color, &a.OpeningBalanceMinor, &a.SortOrder, &a.UpdatedAtMs, &del)
+	if errors.Is(err, sql.ErrNoRows) {
+		return a, ErrNotFound
+	}
+	if del.Valid {
+		a.DeletedAtMs = &del.Int64
+	}
+	return a, err
+}
+
+// MaxAccountSortOrder returns the max sort_order among non-deleted accounts.
+func (s *Store) MaxAccountSortOrder() (int, error) {
+	var n sql.NullInt64
+	err := s.db.QueryRow(`SELECT MAX(sort_order) FROM accounts WHERE deleted_at_ms IS NULL`).Scan(&n)
+	if err != nil {
+		return 0, err
+	}
+	return int(n.Int64), nil
+}
+
+// AccountBalance pairs an account with its current balance.
+type AccountBalance struct {
+	Account      model.Account
+	BalanceMinor int64
+}
+
+// AccountBalances returns every non-deleted account with its balance:
+//
+//	opening + income booked to it - expenses booked to it
+//	        + transfers into it   - transfers out of it
+//
+// Deleted transactions are excluded; deleted accounts are not listed, but
+// money transferred into one is genuinely gone from the total, which is why
+// the app refuses to archive an account that still holds a balance.
+func (s *Store) AccountBalances() ([]AccountBalance, error) {
+	rows, err := s.db.Query(`
+		SELECT a.id, a.name, a.kind, a.emoji, a.color, a.opening_balance_minor,
+		       a.sort_order, a.updated_at_ms,
+		       a.opening_balance_minor + COALESCE((
+		           SELECT SUM(CASE
+		               WHEN t.kind = 'income'   AND t.account_id    = a.id THEN  t.amount_minor
+		               WHEN t.kind = 'expense'  AND t.account_id    = a.id THEN -t.amount_minor
+		               WHEN t.kind = 'transfer' AND t.to_account_id = a.id THEN  t.amount_minor
+		               WHEN t.kind = 'transfer' AND t.account_id    = a.id THEN -t.amount_minor
+		               ELSE 0 END)
+		           FROM transactions t
+		           WHERE t.deleted_at_ms IS NULL
+		             AND (t.account_id = a.id OR t.to_account_id = a.id)
+		       ), 0) AS balance
+		FROM accounts a
+		WHERE a.deleted_at_ms IS NULL
+		ORDER BY a.sort_order, a.name`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AccountBalance
+	for rows.Next() {
+		var ab AccountBalance
+		if err := rows.Scan(&ab.Account.ID, &ab.Account.Name, &ab.Account.Kind, &ab.Account.Emoji,
+			&ab.Account.Color, &ab.Account.OpeningBalanceMinor, &ab.Account.SortOrder,
+			&ab.Account.UpdatedAtMs, &ab.BalanceMinor); err != nil {
+			return nil, err
+		}
+		out = append(out, ab)
+	}
+	return out, rows.Err()
+}
+
+// DefaultAccount resolves the account the bot books to: the synced
+// settings.default_account_id when it still names a live account, otherwise
+// the first account there is. It never returns a deleted account, so
+// archiving the default in the app cannot leave the bot writing into a hole.
+func (s *Store) DefaultAccount() (model.Account, error) {
+	st, err := s.Settings()
+	if err != nil {
+		return model.Account{}, err
+	}
+	if st.DefaultAccountID != "" {
+		a, err := s.GetAccount(st.DefaultAccountID)
+		if err == nil && a.DeletedAtMs == nil {
+			return a, nil
+		}
+		if err != nil && !errors.Is(err, ErrNotFound) {
+			return model.Account{}, err
+		}
+	}
+	accounts, err := s.ListAccounts()
+	if err != nil {
+		return model.Account{}, err
+	}
+	if len(accounts) == 0 {
+		return model.Account{}, ErrNotFound
+	}
+	return accounts[0], nil
 }
 
 // GetAlias resolves a lowercase word to a category id.

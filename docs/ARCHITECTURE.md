@@ -3,6 +3,8 @@
 This document is the **binding contract** between the Flutter app and the Go server (which runs the Telegram bot). Do not deviate from field names, types, or semantics defined here.
 
 > **v2 (2026-08-19)** — the bespoke REST sync API is gone. Both peers now sync through **Google Drive**. The app and the bot are equal peers; neither talks to the other directly.
+>
+> **v3 (2026-08-20)** — **accounts**. Money now sits somewhere: cash, a card, savings, investments. Every transaction names the account it moves through, and a third transaction kind, `transfer`, moves money between two of the owner's own accounts without touching any income or expense total. Snapshot schema goes to **2**. Also adds file **export/import**, which reuses the snapshot format rather than inventing a second one.
 
 ## System overview
 
@@ -24,6 +26,7 @@ This document is the **binding contract** between the Flutter app and the Go ser
 - **Single writer per file**: a peer only ever writes its own snapshot file, so two peers can never conflict on one file. Convergence comes from every peer reading every other peer's file and merging.
 - **Single user**: one Google account, one OAuth client, one Telegram allow-list.
 - **One currency**, amounts stored as **integer minor units**.
+- **Every transaction belongs to an account.** Balances are derived, never stored: an account's balance is its opening balance plus everything logged against it. There is no running-total column to drift out of step with the rows.
 
 ## Data model
 
@@ -33,15 +36,50 @@ All rows carry a client-generated UUIDv4 `id`, `updated_at_ms` (int64, unix ms),
 | field | type | notes |
 |---|---|---|
 | id | string uuid | |
-| kind | `"income"` \| `"expense"` | |
+| kind | `"income"` \| `"expense"` \| `"transfer"` | |
 | amount_minor | int64 > 0 | minor units, always positive; sign implied by kind |
-| category_id | string uuid | FK → category |
+| category_id | string uuid | FK → category. **Empty for a transfer** |
+| account_id | string uuid | FK → account. Money leaves it on an expense, arrives on an income, and is the **source** of a transfer |
+| to_account_id | string uuid | FK → account. The **destination** of a transfer; **empty for every other kind** |
 | note | string | may be empty |
 | occurred_at | string RFC3339 UTC | canonical `…Z` form; normalize on write |
 | source | `"app"` \| `"telegram"` | |
 | created_at_ms | int64 | |
 | updated_at_ms | int64 | |
 | deleted_at_ms | int64 \| null | |
+
+**Transfers are not spending.** `income` and `expense` totals, the category breakdown and the transaction count all ignore `kind = "transfer"` on both peers. Moving 500 000 from a card into savings must leave the month's "spent" figure exactly where it was — otherwise saving money would look like losing it, which is the one thing this feature must never do.
+
+A transfer is a **single row**, not a matched pair of an expense and an income. One row cannot half-arrive under last-write-wins, cannot be edited into an unbalanced state, and cannot be half-deleted; a pair could do all three.
+
+### account
+| field | type | notes |
+|---|---|---|
+| id | string uuid | |
+| name | string | canonical name; see **Seed account naming** |
+| kind | `"cash"` \| `"bank"` \| `"savings"` \| `"investment"` | presentation and grouping only — every account holds money the same way |
+| emoji | string | single emoji used as icon |
+| color | string | `#RRGGBB` |
+| opening_balance_minor | int64 | what the account already held before tracking started. **May be negative** (a card in debt) |
+| sort_order | int | |
+| updated_at_ms | int64 | |
+| deleted_at_ms | int64 \| null | |
+
+`kind` carries no arithmetic: savings and investments are ordinary accounts, so "send to savings" is just a transfer into one. Keeping the behaviour identical is what makes the feature small — there is no second money-movement path to keep in step with the first.
+
+A **balance is derived**, on both peers, by exactly this rule:
+
+```
+balance(a) = a.opening_balance_minor
+           + Σ amount_minor  where kind = 'income'   and account_id    = a.id
+           - Σ amount_minor  where kind = 'expense'  and account_id    = a.id
+           + Σ amount_minor  where kind = 'transfer' and to_account_id = a.id
+           - Σ amount_minor  where kind = 'transfer' and account_id    = a.id
+```
+
+summed over non-deleted transactions only. Archiving an account tombstones it but leaves its transactions pointing at it: history must not lose entries because a wallet was closed.
+
+Investment gains are **not** a separate concept. A rise in value is logged as income into the investment account; a fall, as an expense out of it. That reuses categories, summaries and the bot unchanged rather than adding a valuation model nothing else understands.
 
 ### category
 | field | type | notes |
@@ -61,9 +99,14 @@ All rows carry a client-generated UUIDv4 `id`, `updated_at_ms` (int64, unix ms),
 | id | `"settings"` | fixed |
 | currency | string ISO-4217 | default `"USD"` |
 | language | `""` \| `"en"` \| `"ru"` \| `"uz"` | **NEW in v2.** `""` = follow the device/Telegram locale |
+| default_account_id | string uuid | **NEW in v3.** FK → account; the account the bot books to |
 | updated_at_ms | int64 | |
 
 `language` is synced deliberately: it is how the phone tells the Telegram bot which language to reply in.
+
+`default_account_id` is synced for the same reason: the bot must not ask which account a message belongs to — that would cost the 3-second promise — so the choice is made once in the app and travels to the bot.
+
+An **empty** `default_account_id` means "unchanged", never "cleared". A peer that predates v3 sends the field absent, and reading that literally would strip an account the owner had deliberately picked; the merge therefore keeps the local value, falling back to the seed cash account only when there is no local value at all. If the named account has since been archived, a peer resolves the default to its first live account rather than writing into a hole.
 
 ### Seed categories — FIXED UUIDs
 
@@ -88,6 +131,31 @@ The seeded **settings** row is the exception: it is written with `updated_at_ms 
 | `c1a7e2f0-0102-4a00-9000-000000000102` | Freelance | 💻 | #5A9BE8 | income | 1 |
 | `c1a7e2f0-0103-4a00-9000-000000000103` | Gifts | 🎁 | #E8935A | income | 2 |
 | `c1a7e2f0-0104-4a00-9000-000000000104` | Other income | ➕ | #8E8E93 | income | 3 |
+
+### Seed accounts — FIXED UUIDs
+
+Seeded on first run by both peers, with `updated_at_ms` fixed at `1755000000000`, exactly like the seed categories. `opening_balance_minor` seeds to `0` on all four.
+
+| id | name | emoji | color | kind | sort |
+|---|---|---|---|---|---|
+| `a1c7e2f0-0001-4a00-9000-000000000001` | Cash | 💵 | #4CAF7D | cash | 0 |
+| `a1c7e2f0-0002-4a00-9000-000000000002` | Card | 💳 | #5A9BE8 | bank | 1 |
+| `a1c7e2f0-0003-4a00-9000-000000000003` | Savings | 🏦 | #E8C95A | savings | 2 |
+| `a1c7e2f0-0004-4a00-9000-000000000004` | Investments | 📈 | #9B7DE8 | investment | 3 |
+
+**Cash is the default account**: `settings.default_account_id` seeds to `a1c7e2f0-0001-4a00-9000-000000000001`, and it is where a peer books any transaction that arrives without a usable `account_id`.
+
+Savings and investments are seeded rather than left to the user because "send to savings" has to work on a fresh install without a setup step.
+
+### Seed account naming (i18n)
+
+Identical to the category rule below, with `acc_*` catalog keys instead of `cat_*`:
+
+```
+displayName(a) = (isSeedAccountId(a.id) && a.name == canonicalSeedAccountName(a.id))
+                   ? localized(seedAccountNameKey(a.id))
+                   : a.name
+```
 
 ### Seed category naming (i18n)
 
@@ -138,15 +206,25 @@ One snapshot file per peer, named `tally-<device_id>.json`, mime `application/js
 
 ```json
 {
-  "schema": 1,
+  "schema": 2,
   "device_id": "b2c3…",
   "device_name": "Pixel 7",
   "written_at_ms": 1787160000000,
+  "accounts":     [ Account… ],
   "categories":   [ Category… ],
   "transactions": [ Transaction… ],
   "settings":     Settings
 }
 ```
+
+**Schema 2 adds `accounts`.** A peer writes schema 2 and reads schema 1 and 2, because an un-upgraded device keeps publishing schema 1 and refusing to read it would strand it. A schema-1 snapshot carries no `accounts` array and no `account_id` on its transactions; the reader books every such row to the seed cash account, which is exactly where that peer's own migration puts its pre-accounts rows, so both sides reach the same answer without a round trip. Upgrade both peers: an un-upgraded reader rejects schema 2 outright.
+
+Sanitizing rules specific to accounts, applied to every peer file because it is untrusted input:
+
+- an account with an empty id or name, a malformed `color`, a `kind` outside the four, or `updated_at_ms <= 0` is skipped;
+- a transfer with no `to_account_id`, with `to_account_id == account_id`, or naming an account not present in that snapshot is skipped — a self-transfer nets to zero yet still shows money moving, and is only ever a hand-edit mistake;
+- `to_account_id` set on an income or an expense is **cleared**, not skipped: the balance rule only reads that field on a transfer, so the row is still good data and dropping a real expense over an ignored field would be the worse bug;
+- an unknown or absent `account_id` is rewritten to the seed cash account rather than dropping the transaction, because losing an entry is worse than misfiling one.
 
 The snapshot is a **full dump of that peer's current local state**, tombstones included. Publishing everything (rather than a delta) keeps the merge trivially idempotent and self-healing: a peer that has been offline for months still converges in one pass, and a lost snapshot file costs nothing because every other peer republishes what it knows.
 
@@ -158,7 +236,7 @@ One `syncNow()` pass:
 2. **Resolve folder id** (cached; re-resolve if the cached id 404s).
 3. **List** `tally-*.json` in the folder, requesting `files(id,name,modifiedTime,md5Checksum)`.
 4. **Download** every file except this peer's own, skipping any whose `md5Checksum` equals the one recorded locally for that file id.
-5. **Merge** all downloaded rows into the local DB in a single transaction, using **strict last-write-wins**: an incoming row is applied iff it does not exist locally OR `incoming.updated_at_ms > local.updated_at_ms`. Ties keep the local row. Merged rows are written with `dirty = false`.
+5. **Merge** all downloaded rows into the local DB in a single transaction, accounts first (so a transaction never lands in a pass before the account it names), using **strict last-write-wins**: an incoming row is applied iff it does not exist locally OR `incoming.updated_at_ms > local.updated_at_ms`. Ties keep the local row. Merged rows are written with `dirty = false`.
 6. **Publish** this peer's own snapshot if any local row is dirty, or if the snapshot has never been uploaded. Create the file if absent, else update its content by id.
 7. **Clear dirty** only on rows whose `updated_at_ms` is unchanged since the snapshot was serialized (rows edited mid-sync stay dirty for the next pass).
 8. **Persist** the per-file md5 map and the last-success timestamp.
@@ -172,6 +250,45 @@ Triggers — app: launch, resume, after each local write (3 s debounce), pull-to
 Retry on `429`, `500`, `502`, `503`, `504`, and on a `403` whose reason is `rateLimitExceeded` / `userRateLimitExceeded`. Never retry `400`, `401`, `404`, or `403 storageQuotaExceeded`. Exponential backoff with jitter, capped around 32 s. Treat `401` as "refresh token revoked → re-authorize", surfaced to the user, not as a transient failure.
 
 Status model (unchanged, so the existing UI keeps working): `notConfigured | idle | syncing | offline | error(message)`.
+
+## Export and import
+
+The app can write its data to a file and read one back. Both directions reuse the **snapshot format above, unchanged** — a backup file *is* a peer snapshot. That is the whole design:
+
+- export serializes the same full-state dump the Drive publisher already builds;
+- import runs the same `ParseSnapshot` → sanitize → `MergeRemote` path a peer file goes through.
+
+So there is one wire format, one parser, one sanitizer and one merge rule to keep correct, all of them already pinned by the shared interop fixture. A second bespoke backup format would be a second thing to get wrong.
+
+### JSON backup — the restore path
+
+File name `tally-backup-<YYYYMMDD-HHMMSS>.json`, mime `application/json`, uncompressed.
+
+Import is a **merge under strict last-write-wins**, identical to a sync pass: a row in the file is applied iff it is unknown locally or its `updated_at_ms` is newer, and ties keep the local row. Consequences, all of them wanted:
+
+- importing the same file twice changes nothing the second time (**idempotent**);
+- importing a backup into a populated app cannot silently destroy newer work;
+- tombstones in the file propagate, so a deletion made before the backup is honoured rather than resurrecting the row;
+- the file's own `device_id` is ignored on import — the importing peer keeps its identity and never adopts the exporter's.
+
+Because the format is a snapshot, a file lifted straight out of the Drive folder restores exactly as well as one the app exported.
+
+### CSV export — the spreadsheet path
+
+Export only. CSV cannot carry tombstones or settings, so it is not a restore path and must never be offered as one.
+
+File name `tally-<YYYYMMDD-HHMMSS>.csv`, RFC 4180, UTF-8 **with a BOM** (without it Excel mis-decodes Cyrillic and Uzbek), `\r\n` line endings, comma-separated. Non-deleted transactions only, newest first.
+
+```csv
+date,kind,amount,currency,category,account,to_account,note
+2026-08-18,expense,248.50,USD,Groceries,Card,,weekly shop
+2026-08-20,transfer,5000.00,USD,,Card,Savings,rainy day
+```
+
+- `date` is the `occurred_at` calendar date in UTC, `YYYY-MM-DD`.
+- `amount` is **always** a plain decimal with a `.` separator, no grouping, scaled by the currency's exponent — machine-parseable regardless of UI language. It is never the localized money string.
+- `kind` is the raw `income` / `expense` / `transfer`, not a translation, so a spreadsheet formula can filter on it.
+- `category`, `account` and `to_account` are **display names** in the current UI language (the seed-name rule applies); `category` is empty for a transfer and `to_account` is empty for everything else.
 
 ## Telegram bot
 
@@ -191,7 +308,13 @@ Unchanged in behaviour, plus localization. It writes to the server's local SQLit
 - Success reply: localized, e.g. `✅ −250,00 ₽ • 🛒 Продукты — 3 450,00 за месяц`.
 
 ### Commands
-`/start`, `/today`, `/week`, `/month`, `/undo`, `/categories` — all output localized.
+`/start`, `/today`, `/week`, `/month`, `/undo`, `/categories`, `/accounts` — all output localized.
+
+`/accounts` lists every account with its balance, then the total across all of them, then which account new bot entries land in. Balances render with the plain money formatter, so a negative balance keeps its minus but a positive one is not prefixed with `+` — a balance is an amount, not a change.
+
+The bot's account surface stops there **by design**. It never asks which account a message belongs to: it books to `settings.default_account_id`, chosen once in the app. Adding a per-message account prompt would put a tap back into the one path that must stay at one message.
+
+`/undo` skips transfers. It reports what it removed as "amount • category", and a transfer has no category; undoing one is done in the app, where both of its accounts can be shown.
 
 ### Bot language resolution
 
@@ -260,9 +383,10 @@ app/lib/
   l10n/arb/app_{en,ru,uz}.arb
   core/                      theme, money, dates, constants, seed-name localization
   data/db/                   drift tables + database (+ meta key/value)
-  data/repo/                 transactions, categories, settings, summaries
+  data/repo/                 transactions, categories, accounts, settings, summaries
   data/drive/                device-flow auth client, Drive REST client, DriveSyncEngine
-  features/…                 home, entry, history, stats, categories, settings, shell, common
+  data/backup/               snapshot export/import (JSON) and CSV export
+  features/…                 home, entry, history, stats, categories, accounts, settings, shell, common
 ```
 
 Meta keys (local only, never synced): `google_refresh_token`, `drive_folder_id`, `device_id`, `device_name`, `drive_peer_md5` (JSON map of file id → md5), `last_sync_ms`, `ui_theme_mode`.

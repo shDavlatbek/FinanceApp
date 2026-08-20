@@ -22,7 +22,8 @@ Birinchi soʻz — summa (+ daromadni bildiradi), ikkinchisi turkumni tanlaydi, 
 Buyruqlar:
 /today  /week  /month — hisobotlar
 /undo — oxirgi yozuvni oʻchirish
-/categories — turkumlar roʻyxati"""
+/categories — turkumlar roʻyxati
+/accounts — hisob balanslari"""
 
 [unauthorized]
 other = "⛔ Ruxsat yoʻq."
@@ -140,6 +141,37 @@ other = "⚠️ Turkumni yaratib boʻlmadi."
 
 # --- seed category names ---------------------------------------------------
 # Ilovaning seedCategory* ARB satrlari bilan bir xil boʻlishi shart.
+
+# --- accounts --------------------------------------------------------------
+
+[accounts_title]
+other = "🏦 Hisoblar"
+
+[accounts_total]
+other = "Jami: {{.Amount}}"
+
+[accounts_empty]
+other = "Hozircha hisoblar yoʻq."
+
+[accounts_default_hint]
+other = "Yangi yozuvlar «{{.Account}}» hisobiga tushadi. Buni ilovada oʻzgartirasiz."
+
+[error_accounts]
+other = "⚠️ Hisoblarni koʻrsatib boʻlmadi."
+
+# --- seed account names ----------------------------------------------------
+
+[acc_cash]
+other = "Naqd pul"
+
+[acc_card]
+other = "Karta"
+
+[acc_savings]
+other = "Jamgʻarma"
+
+[acc_investments]
+other = "Investitsiyalar"
 
 [cat_groceries]
 other = "Oziq-ovqat"

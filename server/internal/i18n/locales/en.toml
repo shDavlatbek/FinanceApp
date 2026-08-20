@@ -25,7 +25,8 @@ The first word is the amount (+ means income), the second picks the category, th
 Commands:
 /today  /week  /month — summaries
 /undo — remove the last entry
-/categories — list categories"""
+/categories — list categories
+/accounts — account balances"""
 
 [unauthorized]
 other = "⛔ Not authorized."
@@ -140,6 +141,41 @@ other = "⚠️ Could not list categories."
 
 [error_create_category]
 other = "⚠️ Could not create the category."
+
+# --- accounts --------------------------------------------------------------
+
+[accounts_title]
+other = "🏦 Accounts"
+
+[accounts_total]
+other = "Total: {{.Amount}}"
+
+[accounts_empty]
+other = "No accounts yet."
+
+[accounts_default_hint]
+other = "New entries go to {{.Account}}. Change that in the app."
+
+[error_accounts]
+other = "⚠️ Could not list accounts."
+
+# --- seed account names ----------------------------------------------------
+#
+# Shown ONLY while the user has not renamed the account, exactly as for seed
+# categories. These must stay in sync with the Flutter app's seedAccount* ARB
+# keys.
+
+[acc_cash]
+other = "Cash"
+
+[acc_card]
+other = "Card"
+
+[acc_savings]
+other = "Savings"
+
+[acc_investments]
+other = "Investments"
 
 # --- seed category names ---------------------------------------------------
 #

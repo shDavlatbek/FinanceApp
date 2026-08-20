@@ -1,54 +1,8 @@
 {
-  "schema": 2,
+  "schema": 1,
   "device_id": "11111111-2222-4333-8444-555555555555",
   "device_name": "Fixture Device",
   "written_at_ms": 1787160000000,
-  "accounts": [
-    {
-      "id": "a1c7e2f0-0001-4a00-9000-000000000001",
-      "name": "Cash",
-      "kind": "cash",
-      "emoji": "💵",
-      "color": "#4CAF7D",
-      "opening_balance_minor": 0,
-      "sort_order": 0,
-      "updated_at_ms": 1755000000000,
-      "deleted_at_ms": null
-    },
-    {
-      "id": "a1c7e2f0-0002-4a00-9000-000000000002",
-      "name": "Card",
-      "kind": "bank",
-      "emoji": "💳",
-      "color": "#5A9BE8",
-      "opening_balance_minor": -125000,
-      "sort_order": 1,
-      "updated_at_ms": 1755000000000,
-      "deleted_at_ms": null
-    },
-    {
-      "id": "a1c7e2f0-0003-4a00-9000-000000000003",
-      "name": "Жамғарма",
-      "kind": "savings",
-      "emoji": "🏦",
-      "color": "#E8C95A",
-      "opening_balance_minor": 9007199254740993,
-      "sort_order": 2,
-      "updated_at_ms": 1787159500000,
-      "deleted_at_ms": null
-    },
-    {
-      "id": "a1c7e2f0-0f01-4a00-9000-000000000f01",
-      "name": "Old wallet",
-      "kind": "cash",
-      "emoji": "👛",
-      "color": "#8E8E93",
-      "opening_balance_minor": 0,
-      "sort_order": 9,
-      "updated_at_ms": 1787158000000,
-      "deleted_at_ms": 1787158600000
-    }
-  ],
   "categories": [
     {
       "id": "c1a7e2f0-0001-4a00-9000-000000000001",
@@ -97,8 +51,6 @@
       "kind": "expense",
       "amount_minor": 24850,
       "category_id": "c1a7e2f0-0001-4a00-9000-000000000001",
-      "account_id": "a1c7e2f0-0002-4a00-9000-000000000002",
-      "to_account_id": "",
       "note": "weekly shop",
       "occurred_at": "2026-08-18T09:30:00Z",
       "source": "app",
@@ -111,8 +63,6 @@
       "kind": "expense",
       "amount_minor": 6200,
       "category_id": "c1a7e2f0-0002-4a00-9000-000000000002",
-      "account_id": "a1c7e2f0-0001-4a00-9000-000000000001",
-      "to_account_id": "",
       "note": "",
       "occurred_at": "2026-08-19T07:05:00Z",
       "source": "telegram",
@@ -125,8 +75,6 @@
       "kind": "income",
       "amount_minor": 420000,
       "category_id": "c1a7e2f0-0101-4a00-9000-000000000101",
-      "account_id": "a1c7e2f0-0002-4a00-9000-000000000002",
-      "to_account_id": "",
       "note": "августовская зарплата · oylik maosh",
       "occurred_at": "2026-08-01T00:00:00Z",
       "source": "app",
@@ -139,8 +87,6 @@
       "kind": "expense",
       "amount_minor": 9007199254740993,
       "category_id": "c1a7e2f0-0001-4a00-9000-000000000001",
-      "account_id": "a1c7e2f0-0001-4a00-9000-000000000001",
-      "to_account_id": "",
       "note": "int64 beyond double precision — must survive a round trip",
       "occurred_at": "2026-08-10T12:00:00Z",
       "source": "app",
@@ -153,35 +99,18 @@
       "kind": "expense",
       "amount_minor": 1500,
       "category_id": "c1a7e2f0-0008-4a00-9000-000000000008",
-      "account_id": "a1c7e2f0-0001-4a00-9000-000000000001",
-      "to_account_id": "",
       "note": "deleted on another device",
       "occurred_at": "2026-08-12T18:45:00Z",
       "source": "app",
       "created_at_ms": 1786700000000,
       "updated_at_ms": 1787157000000,
       "deleted_at_ms": 1787157000000
-    },
-    {
-      "id": "aaaaaaaa-0000-4000-8000-000000000006",
-      "kind": "transfer",
-      "amount_minor": 500000,
-      "category_id": "",
-      "account_id": "a1c7e2f0-0002-4a00-9000-000000000002",
-      "to_account_id": "a1c7e2f0-0003-4a00-9000-000000000003",
-      "note": "oyiga jamgʻarma · в накопления",
-      "occurred_at": "2026-08-20T06:15:00Z",
-      "source": "app",
-      "created_at_ms": 1787159900000,
-      "updated_at_ms": 1787159900000,
-      "deleted_at_ms": null
     }
   ],
   "settings": {
     "id": "settings",
     "currency": "UZS",
     "language": "ru",
-    "default_account_id": "a1c7e2f0-0002-4a00-9000-000000000002",
     "updated_at_ms": 1787155000000
   }
 }

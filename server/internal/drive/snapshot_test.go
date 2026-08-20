@@ -14,6 +14,13 @@ func ptr(v int64) *int64 { return &v }
 
 func sampleState() store.Snapshot {
 	return store.Snapshot{
+		Accounts: []model.Account{
+			{ID: store.DefaultAccountID, Name: "Cash", Kind: model.AccountCash, Emoji: "💵",
+				Color: "#4CAF7D", SortOrder: 0, UpdatedAtMs: 1755000000000},
+			{ID: "a1c7e2f0-0003-4a00-9000-000000000003", Name: "Savings", Kind: model.AccountSavings,
+				Emoji: "🏦", Color: "#E8C95A", OpeningBalanceMinor: 1500000, SortOrder: 2,
+				UpdatedAtMs: 1755000000000},
+		},
 		Categories: []model.Category{
 			{ID: "c1a7e2f0-0001-4a00-9000-000000000001", Name: "Groceries", Emoji: "🛒",
 				Color: "#4CAF7D", Kind: model.KindExpense, SortOrder: 0, UpdatedAtMs: 1755000000000},
@@ -23,15 +30,25 @@ func sampleState() store.Snapshot {
 		},
 		Transactions: []model.Transaction{
 			{ID: "11111111-1111-4111-8111-111111111111", Kind: model.KindExpense, AmountMinor: 25000,
-				CategoryID: "c1a7e2f0-0001-4a00-9000-000000000001", Note: "weekly stuff",
+				CategoryID: "c1a7e2f0-0001-4a00-9000-000000000001", AccountID: store.DefaultAccountID,
+				Note:       "weekly stuff",
 				OccurredAt: "2026-08-19T10:00:00Z", Source: model.SourceTelegram,
 				CreatedAtMs: 1787000000000, UpdatedAtMs: 1787000000000},
 			{ID: "22222222-2222-4222-8222-222222222222", Kind: model.KindIncome, AmountMinor: 5000000,
-				CategoryID: "c1a7e2f0-0101-4a00-9000-000000000101", Note: "",
+				CategoryID: "c1a7e2f0-0101-4a00-9000-000000000101", AccountID: store.DefaultAccountID,
+				Note:       "",
 				OccurredAt: "2026-08-01T06:00:00Z", Source: model.SourceApp,
 				CreatedAtMs: 1786000000000, UpdatedAtMs: 1786500000000, DeletedAtMs: ptr(1786500000000)},
+			// "send to savings": neither income nor expense, so it moves a
+			// balance without touching a single monthly total.
+			{ID: "33333333-3333-4333-8333-333333333333", Kind: model.KindTransfer, AmountMinor: 200000,
+				CategoryID: "", AccountID: store.DefaultAccountID,
+				ToAccountID: "a1c7e2f0-0003-4a00-9000-000000000003", Note: "rainy day",
+				OccurredAt: "2026-08-20T08:00:00Z", Source: model.SourceApp,
+				CreatedAtMs: 1787200000000, UpdatedAtMs: 1787200000000},
 		},
-		Settings: model.Settings{ID: model.SettingsID, Currency: "UZS", Language: "uz", UpdatedAtMs: 1787000000000},
+		Settings: model.Settings{ID: model.SettingsID, Currency: "UZS", Language: "uz",
+			DefaultAccountID: store.DefaultAccountID, UpdatedAtMs: 1787000000000},
 	}
 }
 
@@ -78,7 +95,7 @@ func TestSnapshotWireShape(t *testing.T) {
 		got = append(got, k)
 	}
 	sort.Strings(got)
-	want := []string{"categories", "device_id", "device_name", "schema", "settings", "transactions", "written_at_ms"}
+	want := []string{"accounts", "categories", "device_id", "device_name", "schema", "settings", "transactions", "written_at_ms"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("snapshot keys = %v, want %v", got, want)
 	}
@@ -89,8 +106,9 @@ func TestSnapshotWireShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	row = txs[0]
-	for _, k := range []string{"id", "kind", "amount_minor", "category_id", "note",
-		"occurred_at", "source", "created_at_ms", "updated_at_ms", "deleted_at_ms"} {
+	for _, k := range []string{"id", "kind", "amount_minor", "category_id", "account_id",
+		"to_account_id", "note", "occurred_at", "source", "created_at_ms", "updated_at_ms",
+		"deleted_at_ms"} {
 		if _, ok := row[k]; !ok {
 			t.Fatalf("transaction JSON missing %q: %v", k, row)
 		}
@@ -111,7 +129,7 @@ func TestSnapshotWireShape(t *testing.T) {
 	if err := json.Unmarshal(top["settings"], &settings); err != nil {
 		t.Fatal(err)
 	}
-	for _, k := range []string{"id", "currency", "language", "updated_at_ms"} {
+	for _, k := range []string{"id", "currency", "language", "default_account_id", "updated_at_ms"} {
 		if _, ok := settings[k]; !ok {
 			t.Fatalf("settings JSON missing %q: %v", k, settings)
 		}
@@ -119,14 +137,37 @@ func TestSnapshotWireShape(t *testing.T) {
 	if settings["language"] != "uz" {
 		t.Fatalf("settings.language = %v, want uz", settings["language"])
 	}
+
+	var accounts []map[string]any
+	if err := json.Unmarshal(top["accounts"], &accounts); err != nil {
+		t.Fatal(err)
+	}
+	if len(accounts) == 0 {
+		t.Fatal("snapshot carried no accounts")
+	}
+	for _, k := range []string{"id", "name", "kind", "emoji", "color",
+		"opening_balance_minor", "sort_order", "updated_at_ms", "deleted_at_ms"} {
+		if _, ok := accounts[0][k]; !ok {
+			t.Fatalf("account JSON missing %q: %v", k, accounts[0])
+		}
+	}
 }
 
 func TestParseSnapshotRejectsForeignSchema(t *testing.T) {
-	if _, err := ParseSnapshot([]byte(`{"schema":2,"device_id":"x"}`)); err == nil {
-		t.Fatal("schema 2 was accepted")
+	if _, err := ParseSnapshot([]byte(`{"schema":3,"device_id":"x"}`)); err == nil {
+		t.Fatal("a schema from the future was accepted")
+	}
+	if _, err := ParseSnapshot([]byte(`{"schema":0,"device_id":"x"}`)); err == nil {
+		t.Fatal("schema 0 was accepted")
 	}
 	if _, err := ParseSnapshot([]byte(`not json`)); err == nil {
 		t.Fatal("garbage was accepted")
+	}
+	// Schema 1 predates accounts and must still be readable: a peer that has
+	// not been updated yet keeps publishing it, and refusing to read it would
+	// strand the owner's phone.
+	if _, err := ParseSnapshot([]byte(`{"schema":1,"device_id":"x"}`)); err != nil {
+		t.Fatalf("schema 1 was rejected: %v", err)
 	}
 }
 
@@ -203,5 +244,73 @@ func TestFileNameRoundTrip(t *testing.T) {
 		if _, ok := DeviceIDFromFileName(bad); ok {
 			t.Fatalf("DeviceIDFromFileName(%q) accepted a foreign file", bad)
 		}
+	}
+}
+
+// Transfer-specific sanitizing. A peer file is hand-editable, so each of these
+// is a shape the merge has to survive without corrupting a balance.
+func TestSnapshotBatchSanitizesTransfers(t *testing.T) {
+	const (
+		cash    = "a1c7e2f0-0001-4a00-9000-000000000001"
+		savings = "a1c7e2f0-0003-4a00-9000-000000000003"
+		ghost   = "a1c7e2f0-0999-4a00-9000-000000000999"
+	)
+	base := func(id, kind, categoryID, from, to string) model.Transaction {
+		return model.Transaction{
+			ID: id, Kind: kind, AmountMinor: 1000, CategoryID: categoryID,
+			AccountID: from, ToAccountID: to, OccurredAt: "2026-08-20T10:00:00Z",
+			Source: model.SourceApp, UpdatedAtMs: 1787000000000,
+		}
+	}
+	s := Snapshot{
+		Schema: SnapshotSchema,
+		Accounts: []model.Account{
+			{ID: cash, Name: "Cash", Kind: model.AccountCash, Emoji: "💵",
+				Color: "#4CAF7D", UpdatedAtMs: 1755000000000},
+			{ID: savings, Name: "Savings", Kind: model.AccountSavings, Emoji: "🏦",
+				Color: "#E8C95A", UpdatedAtMs: 1755000000000},
+		},
+		Transactions: []model.Transaction{
+			base("ok-transfer", model.KindTransfer, "", cash, savings),
+			base("no-destination", model.KindTransfer, "", cash, ""),
+			base("self-transfer", model.KindTransfer, "", cash, cash),
+			base("ghost-destination", model.KindTransfer, "", cash, ghost),
+			// A stray destination on an expense is cleared, and the row kept.
+			base("stray-destination", model.KindExpense, "c1a7e2f0-0001-4a00-9000-000000000001", cash, savings),
+			// An expense with no category is still rejected; only transfers
+			// are allowed to be category-less.
+			base("no-category", model.KindExpense, "", cash, ""),
+		},
+	}
+
+	batch, skipped := s.Batch()
+	kept := map[string]model.Transaction{}
+	for _, tx := range batch.Transactions {
+		kept[tx.ID] = tx
+	}
+
+	for _, id := range []string{"no-destination", "self-transfer", "ghost-destination", "no-category"} {
+		if _, ok := kept[id]; ok {
+			t.Errorf("%s survived sanitizing", id)
+		}
+	}
+	if len(skipped) != 4 {
+		t.Errorf("skipped %d rows, want 4: %v", len(skipped), skipped)
+	}
+
+	good, ok := kept["ok-transfer"]
+	if !ok {
+		t.Fatal("a valid transfer was dropped")
+	}
+	if good.ToAccountID != savings || good.AccountID != cash || good.CategoryID != "" {
+		t.Errorf("valid transfer was altered: %+v", good)
+	}
+
+	stray, ok := kept["stray-destination"]
+	if !ok {
+		t.Fatal("an expense was dropped over an ignored to_account_id")
+	}
+	if stray.ToAccountID != "" {
+		t.Errorf("stray to_account_id survived on an expense: %q", stray.ToAccountID)
 	}
 }

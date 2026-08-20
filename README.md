@@ -7,8 +7,10 @@ A friction-free, self-hosted personal money tracker. Log an expense by messaging
 ## Features
 
 - 🤖 **Telegram bot entry** — `250 groceries lunch` logs an expense; `+50000 salary` logs income; unknown words get a one-tap category picker and are remembered forever after
-- 📊 `/today`, `/week`, `/month` summaries and `/undo` right in Telegram
+- 📊 `/today`, `/week`, `/month` summaries, `/accounts` balances and `/undo` right in Telegram
 - 📱 **Flutter app** (Android + iOS) — month overview, fast numpad entry, history with search, category donut & trend charts, category management
+- 🏦 **Accounts** — cash, cards, savings, investments, each with its own balance. "Send to savings" is a transfer between two of your accounts, and transfers never count as income or spending, so putting money aside doesn't look like losing it
+- 💾 **Export & import** — write a JSON backup or a CSV for your spreadsheet, and restore a backup later. Import merges newest-wins, so running it twice changes nothing and it can never clobber newer entries
 - ☁️ **Google Drive sync** — the app and the bot are peers that exchange snapshots in a `Tally` folder in your own Drive. No exposed ports, no public hostname, no TLS certificates. Your data sits in your Drive as readable JSON, which doubles as your backup.
 - 🌍 **English · Русский · Oʻzbekcha** — the whole app and every bot reply. Pick the language in the app and the bot follows it.
 - 🔌 **Offline-first** — the app is fully usable with no Drive connected at all
@@ -94,7 +96,7 @@ docs/     SPEC.md · ARCHITECTURE.md (binding contracts) · DESIGN.md · PLAN.md
 
 ## Roadmap
 
-Per-category budgets with Telegram warnings ("groceries at 90%"), CSV export, recurring transactions, multi-currency.
+Per-category budgets with Telegram warnings ("groceries at 90%"), recurring transactions, multi-currency.
 
 ## License
 
