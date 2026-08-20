@@ -1,6 +1,6 @@
 # Data & secrets
 .env
-data/
+/data/
 *.db
 
 # Go
