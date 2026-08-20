@@ -1,0 +1,27 @@
+# flutter gen-l10n configuration (docs/ARCHITECTURE.md § Internationalization).
+#
+# NOTE: `synthetic-package` is REMOVED in Flutter 3.28+ and hard-errors when
+# set to true — the key is deliberately absent.
+
+# Inputs
+arb-dir: lib/l10n/arb
+template-arb-file: app_en.arb
+
+# Outputs
+output-dir: lib/l10n/gen
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+
+# Ergonomics
+nullable-getter: false
+use-named-parameters: true
+format: true
+required-resource-attributes: false
+
+# Hygiene
+untranslated-messages-file: l10n_untranslated.json
+preferred-supported-locales: [en]
+
+# DO NOT set `use-escaping: true`. Uzbek orthography is full of `oʻ` / `gʻ`
+# apostrophes; with escaping on, a translator typing an ASCII `'` silently
+# mangles the string.

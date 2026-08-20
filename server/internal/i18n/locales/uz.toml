@@ -1,0 +1,187 @@
+# Tally Telegram boti — oʻzbekcha katalog (lotin yozuvi).
+#
+# Koʻplik: oʻzbek tilida ingliz tilidagidek one/other yetarli (one — n = 1).
+# Amalda son bilan kelgan ot oʻzgarmaydi, shuning uchun ikkala shakl bir xil
+# boʻlishi mumkin — lekin go-i18n xato bermasligi uchun ikkalasi ham kerak.
+#
+# Tutuq belgisi sifatida ʻ (U+02BB) ishlatiladi, ASCII ' emas.
+
+# --- general ---------------------------------------------------------------
+
+[start]
+other = """
+👋 Tally — pulni 3 soniyada yozib qoʻying.
+
+Shunchaki xabar yuboring:
+  250 oziq-ovqat haftalik xarid
+  250.50 taksi
+  +50000 maosh
+
+Birinchi soʻz — summa (+ daromadni bildiradi), ikkinchisi turkumni tanlaydi, qolgani izohga aylanadi.
+
+Buyruqlar:
+/today  /week  /month — hisobotlar
+/undo — oxirgi yozuvni oʻchirish
+/categories — turkumlar roʻyxati"""
+
+[unauthorized]
+other = "⛔ Ruxsat yoʻq."
+
+[unknown_command]
+other = "🤔 Notanish buyruq. Yordam uchun /start yuboring."
+
+# --- entry -----------------------------------------------------------------
+
+[hint_amount]
+other = """
+🤔 Summani oʻqiy olmadim. Masalan:
+250 oziq-ovqat haftalik xarid
+250.50 taksi
++50000 maosh"""
+
+[pick_category]
+other = "{{.Amount}} uchun turkumni tanlang:"
+
+[button_new_category]
+other = "➕ Yangi: «{{.Word}}»"
+
+[nothing_pending]
+other = "Kutilayotgan yozuv yoʻq — avval summa yuboring, masalan 250 oziq-ovqat"
+
+[new_category_needs_word]
+other = "🤔 Yangi turkum nomini bilmayman. Yozuvni soʻz bilan qayta yuboring, masalan 250 kitob"
+
+[category_gone]
+other = "⚠️ Bu turkum oʻchirilgan. Yozuvni qayta yuboring."
+
+[category_wrong_kind]
+other = "⚠️ {{.Category}} — bu {{.Kind}}. Yozuvni qayta yuboring."
+
+[kind_income]
+other = "daromad turkumi"
+
+[kind_expense]
+other = "xarajat turkumi"
+
+[entry_saved]
+other = "✅ {{.Amount}} • {{.Category}} — oy boshidan {{.Total}}"
+
+# --- summaries -------------------------------------------------------------
+
+[summary_today]
+other = "📊 Bugun · {{.Date}}"
+
+[summary_week]
+other = "📊 Bu hafta · {{.From}} — {{.To}}"
+
+[summary_month]
+other = "📊 {{.Month}}"
+
+[summary_net]
+other = "Sof: {{.Amount}}"
+
+[summary_income]
+other = "Daromad: {{.Amount}}"
+
+[summary_expenses]
+other = "Xarajat: {{.Amount}}"
+
+[summary_top]
+other = "Eng koʻp xarajat:"
+
+[summary_empty]
+other = "Hozircha amaliyotlar yoʻq."
+
+[tx_count]
+one = "{{.Count}} ta amaliyot"
+other = "{{.Count}} ta amaliyot"
+
+# --- undo ------------------------------------------------------------------
+
+[undo_removed]
+other = "↩️ Oʻchirildi: {{.Amount}} • {{.Category}}"
+
+[undo_nothing]
+other = "Bekor qiladigan narsa yoʻq."
+
+[unknown_category]
+other = "(nomaʼlum turkum)"
+
+# --- categories ------------------------------------------------------------
+
+[categories_expense]
+other = "Xarajat turkumlari:"
+
+[categories_income]
+other = "Daromad turkumlari:"
+
+[categories_empty]
+other = "Hozircha turkumlar yoʻq."
+
+# --- errors ----------------------------------------------------------------
+
+[error_generic]
+other = "⚠️ Nimadir xato ketdi, qayta urinib koʻring."
+
+[error_save]
+other = "⚠️ Saqlab boʻlmadi, qayta urinib koʻring."
+
+[error_summary]
+other = "⚠️ Hisobotni tuzib boʻlmadi."
+
+[error_undo]
+other = "⚠️ Bekor qilib boʻlmadi."
+
+[error_categories]
+other = "⚠️ Turkumlar roʻyxatini olib boʻlmadi."
+
+[error_create_category]
+other = "⚠️ Turkumni yaratib boʻlmadi."
+
+# --- seed category names ---------------------------------------------------
+# Ilovaning seedCategory* ARB satrlari bilan bir xil boʻlishi shart.
+
+[cat_groceries]
+other = "Oziq-ovqat"
+
+[cat_cafe]
+other = "Kafe"
+
+[cat_transport]
+other = "Transport"
+
+[cat_home]
+other = "Uy"
+
+[cat_utilities]
+other = "Kommunal"
+
+[cat_health]
+other = "Sogʻliq"
+
+[cat_shopping]
+other = "Xaridlar"
+
+[cat_fun]
+other = "Koʻngilochar"
+
+[cat_subscriptions]
+other = "Obunalar"
+
+[cat_travel]
+other = "Sayohat"
+
+[cat_other]
+other = "Boshqa"
+
+[cat_salary]
+other = "Maosh"
+
+[cat_freelance]
+other = "Frilans"
+
+[cat_gifts]
+other = "Sovgʻalar"
+
+[cat_other_income]
+other = "Boshqa daromad"

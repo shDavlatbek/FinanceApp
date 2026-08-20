@@ -1,0 +1,116 @@
+{
+  "schema": 1,
+  "device_id": "11111111-2222-4333-8444-555555555555",
+  "device_name": "Fixture Device",
+  "written_at_ms": 1787160000000,
+  "categories": [
+    {
+      "id": "c1a7e2f0-0001-4a00-9000-000000000001",
+      "name": "Groceries",
+      "emoji": "🛒",
+      "color": "#4CAF7D",
+      "kind": "expense",
+      "sort_order": 0,
+      "updated_at_ms": 1755000000000,
+      "deleted_at_ms": null
+    },
+    {
+      "id": "c1a7e2f0-0002-4a00-9000-000000000002",
+      "name": "Кофейни",
+      "emoji": "☕",
+      "color": "#E8935A",
+      "kind": "expense",
+      "sort_order": 1,
+      "updated_at_ms": 1787159000000,
+      "deleted_at_ms": null
+    },
+    {
+      "id": "c1a7e2f0-0008-4a00-9000-000000000008",
+      "name": "Fun",
+      "emoji": "🎮",
+      "color": "#5AE8D4",
+      "kind": "expense",
+      "sort_order": 7,
+      "updated_at_ms": 1787158000000,
+      "deleted_at_ms": 1787158500000
+    },
+    {
+      "id": "c1a7e2f0-0101-4a00-9000-000000000101",
+      "name": "Salary",
+      "emoji": "💼",
+      "color": "#4CAF7D",
+      "kind": "income",
+      "sort_order": 0,
+      "updated_at_ms": 1755000000000,
+      "deleted_at_ms": null
+    }
+  ],
+  "transactions": [
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000001",
+      "kind": "expense",
+      "amount_minor": 24850,
+      "category_id": "c1a7e2f0-0001-4a00-9000-000000000001",
+      "note": "weekly shop",
+      "occurred_at": "2026-08-18T09:30:00Z",
+      "source": "app",
+      "created_at_ms": 1787000000000,
+      "updated_at_ms": 1787000000000,
+      "deleted_at_ms": null
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000002",
+      "kind": "expense",
+      "amount_minor": 6200,
+      "category_id": "c1a7e2f0-0002-4a00-9000-000000000002",
+      "note": "",
+      "occurred_at": "2026-08-19T07:05:00Z",
+      "source": "telegram",
+      "created_at_ms": 1787100000000,
+      "updated_at_ms": 1787100000000,
+      "deleted_at_ms": null
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000003",
+      "kind": "income",
+      "amount_minor": 420000,
+      "category_id": "c1a7e2f0-0101-4a00-9000-000000000101",
+      "note": "августовская зарплата · oylik maosh",
+      "occurred_at": "2026-08-01T00:00:00Z",
+      "source": "app",
+      "created_at_ms": 1786900000000,
+      "updated_at_ms": 1787150000000,
+      "deleted_at_ms": null
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000004",
+      "kind": "expense",
+      "amount_minor": 9007199254740993,
+      "category_id": "c1a7e2f0-0001-4a00-9000-000000000001",
+      "note": "int64 beyond double precision — must survive a round trip",
+      "occurred_at": "2026-08-10T12:00:00Z",
+      "source": "app",
+      "created_at_ms": 1786800000000,
+      "updated_at_ms": 1786800000000,
+      "deleted_at_ms": null
+    },
+    {
+      "id": "aaaaaaaa-0000-4000-8000-000000000005",
+      "kind": "expense",
+      "amount_minor": 1500,
+      "category_id": "c1a7e2f0-0008-4a00-9000-000000000008",
+      "note": "deleted on another device",
+      "occurred_at": "2026-08-12T18:45:00Z",
+      "source": "app",
+      "created_at_ms": 1786700000000,
+      "updated_at_ms": 1787157000000,
+      "deleted_at_ms": 1787157000000
+    }
+  ],
+  "settings": {
+    "id": "settings",
+    "currency": "UZS",
+    "language": "ru",
+    "updated_at_ms": 1787155000000
+  }
+}

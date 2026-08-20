@@ -1,0 +1,194 @@
+# Tally Telegram bot — English source catalogue.
+#
+# Every message id in this file MUST also exist in ru.toml and uz.toml;
+# TestCatalogsAreComplete enforces that, so adding a string here fails the
+# build until it is translated.
+#
+# Plural messages need one/other in en and uz, and the full CLDR set
+# one/few/many/other in ru.
+#
+# Values are Go text/template: {{.Amount}}, {{.Category}}, {{.Count}}, …
+
+# --- general ---------------------------------------------------------------
+
+[start]
+other = """
+👋 Tally — log money in 3 seconds.
+
+Just type a message:
+  250 groceries weekly stuff
+  250.50 taxi
+  +50000 salary
+
+The first word is the amount (+ means income), the second picks the category, the rest becomes a note.
+
+Commands:
+/today  /week  /month — summaries
+/undo — remove the last entry
+/categories — list categories"""
+
+[unauthorized]
+other = "⛔ Not authorized."
+
+[unknown_command]
+other = "🤔 Unknown command. Try /start for help."
+
+# --- entry -----------------------------------------------------------------
+
+[hint_amount]
+other = """
+🤔 I couldn't read an amount. Try:
+250 groceries weekly stuff
+250.50 taxi
++50000 salary"""
+
+[pick_category]
+other = "Pick a category for {{.Amount}}:"
+
+[button_new_category]
+other = "➕ New: “{{.Word}}”"
+
+[nothing_pending]
+other = "Nothing pending — send an amount first, e.g. 250 groceries"
+
+[new_category_needs_word]
+other = "🤔 I don't have a name for the new category. Send the entry again with a word, e.g. 250 books"
+
+[category_gone]
+other = "⚠️ That category is gone. Send the entry again."
+
+[category_wrong_kind]
+other = "⚠️ {{.Category}} is {{.Kind}}. Send the entry again."
+
+[kind_income]
+other = "an income category"
+
+[kind_expense]
+other = "an expense category"
+
+[entry_saved]
+other = "✅ {{.Amount}} • {{.Category}} — {{.Total}} this month"
+
+# --- summaries -------------------------------------------------------------
+
+[summary_today]
+other = "📊 Today · {{.Date}}"
+
+[summary_week]
+other = "📊 This week · {{.From}} — {{.To}}"
+
+[summary_month]
+other = "📊 {{.Month}}"
+
+[summary_net]
+other = "Net: {{.Amount}}"
+
+[summary_income]
+other = "Income: {{.Amount}}"
+
+[summary_expenses]
+other = "Expenses: {{.Amount}}"
+
+[summary_top]
+other = "Top spending:"
+
+[summary_empty]
+other = "No transactions yet."
+
+[tx_count]
+one = "{{.Count}} transaction"
+other = "{{.Count}} transactions"
+
+# --- undo ------------------------------------------------------------------
+
+[undo_removed]
+other = "↩️ Removed: {{.Amount}} • {{.Category}}"
+
+[undo_nothing]
+other = "Nothing to undo."
+
+[unknown_category]
+other = "(unknown category)"
+
+# --- categories ------------------------------------------------------------
+
+[categories_expense]
+other = "Expense categories:"
+
+[categories_income]
+other = "Income categories:"
+
+[categories_empty]
+other = "No categories yet."
+
+# --- errors ----------------------------------------------------------------
+
+[error_generic]
+other = "⚠️ Something went wrong, try again."
+
+[error_save]
+other = "⚠️ Could not save that, try again."
+
+[error_summary]
+other = "⚠️ Could not build the summary."
+
+[error_undo]
+other = "⚠️ Could not undo."
+
+[error_categories]
+other = "⚠️ Could not list categories."
+
+[error_create_category]
+other = "⚠️ Could not create the category."
+
+# --- seed category names ---------------------------------------------------
+#
+# Shown ONLY while the user has not renamed the category (docs/ARCHITECTURE.md
+# § Seed category naming). These must stay in sync with the Flutter app's
+# seedCategory* ARB keys — the bot matches typed words against every language's
+# variant, so a mismatch makes "продукты" stop resolving to Groceries.
+
+[cat_groceries]
+other = "Groceries"
+
+[cat_cafe]
+other = "Cafe"
+
+[cat_transport]
+other = "Transport"
+
+[cat_home]
+other = "Home"
+
+[cat_utilities]
+other = "Utilities"
+
+[cat_health]
+other = "Health"
+
+[cat_shopping]
+other = "Shopping"
+
+[cat_fun]
+other = "Fun"
+
+[cat_subscriptions]
+other = "Subscriptions"
+
+[cat_travel]
+other = "Travel"
+
+[cat_other]
+other = "Other"
+
+[cat_salary]
+other = "Salary"
+
+[cat_freelance]
+other = "Freelance"
+
+[cat_gifts]
+other = "Gifts"
+
+[cat_other_income]
+other = "Other income"

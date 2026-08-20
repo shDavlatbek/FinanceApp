@@ -1,0 +1,773 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Tally",
+  "@appTitle": {
+    "description": "Application name. Brand — keep identical in every locale."
+  },
+
+  "navHome": "Home",
+  "@navHome": {
+    "description": "Bottom navigation label for the Home tab"
+  },
+  "navHistory": "History",
+  "@navHistory": {
+    "description": "Bottom navigation label for the History tab"
+  },
+  "navStats": "Stats",
+  "@navStats": {
+    "description": "Bottom navigation label for the Stats tab"
+  },
+  "navSettings": "Settings",
+  "@navSettings": {
+    "description": "Bottom navigation label for the Settings tab"
+  },
+
+  "commonIncome": "Income",
+  "@commonIncome": {
+    "description": "Label for money coming in — chips, legends, filters"
+  },
+  "commonExpense": "Expense",
+  "@commonExpense": {
+    "description": "Label for a single outgoing transaction kind"
+  },
+  "commonExpenses": "Expenses",
+  "@commonExpenses": {
+    "description": "Plural label for outgoing transactions, used as a filter chip"
+  },
+  "commonSpent": "Spent",
+  "@commonSpent": {
+    "description": "Label for the total amount spent in a period"
+  },
+  "commonAll": "All",
+  "@commonAll": {
+    "description": "Filter chip that clears the transaction-kind filter"
+  },
+  "commonCancel": "Cancel",
+  "@commonCancel": {
+    "description": "Dismisses a dialog or an in-progress flow without acting"
+  },
+  "commonUndo": "Undo",
+  "@commonUndo": {
+    "description": "Snackbar action that restores a just-deleted transaction"
+  },
+  "commonTryAgain": "Try again",
+  "@commonTryAgain": {
+    "description": "Button that retries a failed operation"
+  },
+  "commonSaveChanges": "Save changes",
+  "@commonSaveChanges": {
+    "description": "Primary button when editing an existing record"
+  },
+  "commonAddEntry": "Add entry",
+  "@commonAddEntry": {
+    "description": "Empty-state button that opens the transaction entry sheet"
+  },
+  "commonToday": "Today",
+  "@commonToday": {
+    "description": "Label for the current calendar day"
+  },
+  "commonYesterday": "Yesterday",
+  "@commonYesterday": {
+    "description": "Label for the previous calendar day"
+  },
+  "commonPercent": "{value}%",
+  "@commonPercent": {
+    "description": "A share of a total rendered as a percentage",
+    "placeholders": {
+      "value": {
+        "type": "int",
+        "example": "42"
+      }
+    }
+  },
+
+  "homeNetThisMonth": "NET THIS MONTH",
+  "@homeNetThisMonth": {
+    "description": "Uppercase caption above the hero number when the current month is shown"
+  },
+  "homeNetForMonth": "NET · {month}",
+  "@homeNetForMonth": {
+    "description": "Uppercase caption above the hero number for a past month. The month is already formatted and uppercased.",
+    "placeholders": {
+      "month": {
+        "type": "String",
+        "example": "JULY 2026"
+      }
+    }
+  },
+  "homeEmptyTitle": "A quiet ledger",
+  "@homeEmptyTitle": {
+    "description": "Title of the Home empty state when nothing was recorded yet"
+  },
+  "homeEmptyMessage": "Your first entry is one tap away — or text the bot.",
+  "@homeEmptyMessage": {
+    "description": "Body of the Home empty state"
+  },
+  "homeSpendingSection": "Spending",
+  "@homeSpendingSection": {
+    "description": "Section header above the per-category spending bars"
+  },
+  "homeNothingSpentTitle": "Nothing spent",
+  "@homeNothingSpentTitle": {
+    "description": "Title shown when the selected month has no expenses"
+  },
+  "homeNothingSpentMessage": "No expenses recorded this month.",
+  "@homeNothingSpentMessage": {
+    "description": "Body shown when the selected month has no expenses"
+  },
+  "homeRecentSection": "Recent",
+  "@homeRecentSection": {
+    "description": "Section header above the five most recent transactions"
+  },
+  "homeNoEntriesTitle": "No entries yet",
+  "@homeNoEntriesTitle": {
+    "description": "Title of the empty Recent list"
+  },
+  "homeNoEntriesMessage": "Recent transactions will appear here.",
+  "@homeNoEntriesMessage": {
+    "description": "Body of the empty Recent list"
+  },
+
+  "historyTitle": "History",
+  "@historyTitle": {
+    "description": "Screen title of the History tab"
+  },
+  "historySearchHint": "Search notes",
+  "@historySearchHint": {
+    "description": "Placeholder in the note-search field"
+  },
+  "historyCategoryFilter": "Category",
+  "@historyCategoryFilter": {
+    "description": "Filter chip that opens the category picker"
+  },
+  "historyFilterByCategoryTitle": "Filter by category",
+  "@historyFilterByCategoryTitle": {
+    "description": "Title of the category-filter bottom sheet"
+  },
+  "historyNoMatchesTitle": "No matches",
+  "@historyNoMatchesTitle": {
+    "description": "Title shown when search and filters return nothing"
+  },
+  "historyNoMatchesMessage": "Try a different search or clear the filters.",
+  "@historyNoMatchesMessage": {
+    "description": "Body shown when search and filters return nothing"
+  },
+  "historyEmptyTitle": "Nothing here yet",
+  "@historyEmptyTitle": {
+    "description": "Title of the History empty state with no filters applied"
+  },
+  "historyEmptyMessage": "Entries you add — here or via Telegram — land in this ledger.",
+  "@historyEmptyMessage": {
+    "description": "Body of the History empty state with no filters applied"
+  },
+  "historyDeletedItem": "Deleted · {label}",
+  "@historyDeletedItem": {
+    "description": "Snackbar after swiping a transaction away; the label is its note, or the formatted amount when it has none.",
+    "placeholders": {
+      "label": {
+        "type": "String",
+        "example": "weekly shop"
+      }
+    }
+  },
+
+  "statsTitle": "Stats",
+  "@statsTitle": {
+    "description": "Screen title of the Stats tab"
+  },
+  "statsNoDataTitle": "No data for {month}",
+  "@statsNoDataTitle": {
+    "description": "Empty-state title on Stats; the month is already formatted.",
+    "placeholders": {
+      "month": {
+        "type": "String",
+        "example": "August 2026"
+      }
+    }
+  },
+  "statsNoIncomeMessage": "No income recorded this month.",
+  "@statsNoIncomeMessage": {
+    "description": "Stats empty-state body while the Income kind is selected"
+  },
+  "statsNoSpendingMessage": "No spending recorded this month.",
+  "@statsNoSpendingMessage": {
+    "description": "Stats empty-state body while the Expense kind is selected"
+  },
+  "statsEarnedLabel": "EARNED",
+  "@statsEarnedLabel": {
+    "description": "Uppercase caption in the donut centre for total income"
+  },
+  "statsSpentLabel": "SPENT",
+  "@statsSpentLabel": {
+    "description": "Uppercase caption in the donut centre for total spending"
+  },
+  "statsLastMonths": "{count, plural, one{Last month} other{Last {count} months}}",
+  "@statsLastMonths": {
+    "description": "Section header above the trend chart. Russian needs one/few/many/other.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "6"
+      }
+    }
+  },
+  "statsSharePercent": "{percent}% · {emoji}",
+  "@statsSharePercent": {
+    "description": "Share of the total plus the category emoji, under the donut centre amount",
+    "placeholders": {
+      "percent": {
+        "type": "int",
+        "example": "37"
+      },
+      "emoji": {
+        "type": "String",
+        "example": "🛒"
+      }
+    }
+  },
+
+  "categoriesTitle": "Categories",
+  "@categoriesTitle": {
+    "description": "Screen title of the Categories screen"
+  },
+  "categoriesEmptyTitle": "No categories",
+  "@categoriesEmptyTitle": {
+    "description": "Title shown when a kind has no categories left"
+  },
+  "categoriesEmptyMessage": "Add one below to start organizing.",
+  "@categoriesEmptyMessage": {
+    "description": "Body shown when a kind has no categories left"
+  },
+  "categoryNew": "New category",
+  "@categoryNew": {
+    "description": "Button that opens the sheet for creating a category, and that sheet's title"
+  },
+  "categoryEdit": "Edit category",
+  "@categoryEdit": {
+    "description": "Title of the category sheet when editing an existing category"
+  },
+  "categoryNameHint": "Name",
+  "@categoryNameHint": {
+    "description": "Placeholder in the category name field"
+  },
+  "categoryEmojiLabel": "EMOJI",
+  "@categoryEmojiLabel": {
+    "description": "Uppercase label above the emoji picker"
+  },
+  "categoryColorLabel": "COLOR",
+  "@categoryColorLabel": {
+    "description": "Uppercase label above the color picker"
+  },
+  "categoryCreate": "Create category",
+  "@categoryCreate": {
+    "description": "Primary button that saves a brand-new category"
+  },
+  "categoryArchive": "Archive",
+  "@categoryArchive": {
+    "description": "Button and dialog action that hides a category from pickers"
+  },
+  "categoryArchiveConfirmTitle": "Archive category?",
+  "@categoryArchiveConfirmTitle": {
+    "description": "Title of the archive confirmation dialog"
+  },
+  "categoryArchiveConfirmMessage": "“{name}” will be hidden from pickers. Existing transactions keep it.",
+  "@categoryArchiveConfirmMessage": {
+    "description": "Body of the archive confirmation dialog",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Groceries"
+      }
+    }
+  },
+
+  "entryNewTitle": "New entry",
+  "@entryNewTitle": {
+    "description": "Title of the transaction sheet when adding"
+  },
+  "entryEditTitle": "Edit entry",
+  "@entryEditTitle": {
+    "description": "Title of the transaction sheet when editing"
+  },
+  "entryNoteHint": "Add a note",
+  "@entryNoteHint": {
+    "description": "Placeholder in the transaction note field"
+  },
+  "entryPickDate": "Pick date",
+  "@entryPickDate": {
+    "description": "Date chip that opens the calendar picker"
+  },
+  "entryAddIncome": "Add income",
+  "@entryAddIncome": {
+    "description": "Primary button that saves a new income transaction"
+  },
+  "entryAddExpense": "Add expense",
+  "@entryAddExpense": {
+    "description": "Primary button that saves a new expense transaction"
+  },
+  "entryDeleted": "Deleted {amount}",
+  "@entryDeleted": {
+    "description": "Snackbar after deleting a transaction from the edit sheet",
+    "placeholders": {
+      "amount": {
+        "type": "String",
+        "example": "−$250.00"
+      }
+    }
+  },
+
+  "transactionUncategorized": "Uncategorized",
+  "@transactionUncategorized": {
+    "description": "Fallback name when a transaction references a missing category"
+  },
+  "sourceTelegram": "Telegram",
+  "@sourceTelegram": {
+    "description": "Badge on transactions logged through the Telegram bot. Brand — keep identical."
+  },
+
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Screen title of the Settings tab"
+  },
+  "settingsSyncSection": "Sync",
+  "@settingsSyncSection": {
+    "description": "Section header above the Google Drive card"
+  },
+  "settingsPreferencesSection": "Preferences",
+  "@settingsPreferencesSection": {
+    "description": "Section header above currency, categories, appearance and language"
+  },
+  "settingsAboutSection": "About",
+  "@settingsAboutSection": {
+    "description": "Section header above the app description"
+  },
+  "settingsCurrency": "Currency",
+  "@settingsCurrency": {
+    "description": "Row title and picker title for the main currency"
+  },
+  "settingsCategoriesValue": "Edit & reorder",
+  "@settingsCategoriesValue": {
+    "description": "Trailing hint on the Categories row"
+  },
+  "settingsAppearanceLabel": "APPEARANCE",
+  "@settingsAppearanceLabel": {
+    "description": "Uppercase label above the theme selector"
+  },
+  "settingsLanguageLabel": "LANGUAGE",
+  "@settingsLanguageLabel": {
+    "description": "Uppercase label above the language selector"
+  },
+  "settingsThemeDark": "Dark",
+  "@settingsThemeDark": {
+    "description": "Theme option: always dark"
+  },
+  "settingsThemeLight": "Light",
+  "@settingsThemeLight": {
+    "description": "Theme option: always light"
+  },
+  "settingsThemeSystem": "System",
+  "@settingsThemeSystem": {
+    "description": "Theme option: follow the device setting"
+  },
+  "settingsLanguageSystem": "System",
+  "@settingsLanguageSystem": {
+    "description": "Language option: follow the device locale. The other options are endonyms (English, Русский, Oʻzbekcha) and are never translated."
+  },
+  "settingsVersion": "v{version}",
+  "@settingsVersion": {
+    "description": "App version line in the About card",
+    "placeholders": {
+      "version": {
+        "type": "String",
+        "example": "0.1.0"
+      }
+    }
+  },
+  "settingsAboutBody": "Local-first money tracking that syncs through your own Google Drive and logs from a self-hosted Telegram bot. Your data never leaves your own accounts.",
+  "@settingsAboutBody": {
+    "description": "One-paragraph description of the app in the About card"
+  },
+
+  "syncIndicatorSyncing": "Syncing",
+  "@syncIndicatorSyncing": {
+    "description": "Compact chip in the Home header while a sync pass runs"
+  },
+  "syncIndicatorOffline": "Offline",
+  "@syncIndicatorOffline": {
+    "description": "Compact chip in the Home header when the last pass failed at the network level"
+  },
+  "syncIndicatorIssue": "Sync issue",
+  "@syncIndicatorIssue": {
+    "description": "Compact chip in the Home header when the last pass failed for a non-network reason"
+  },
+  "syncStatusSyncing": "Syncing…",
+  "@syncStatusSyncing": {
+    "description": "Settings sync status while a pass runs"
+  },
+  "syncStatusConnected": "Connected",
+  "@syncStatusConnected": {
+    "description": "Settings sync status when Drive is connected and quiet"
+  },
+  "syncStatusOffline": "Offline — will retry",
+  "@syncStatusOffline": {
+    "description": "Settings sync status after a network failure"
+  },
+  "syncStatusStandalone": "Standalone mode",
+  "@syncStatusStandalone": {
+    "description": "Settings sync status when no Google account is connected"
+  },
+  "syncNeverSynced": "Never synced",
+  "@syncNeverSynced": {
+    "description": "Sub-line under the sync status when no pass ever succeeded"
+  },
+  "syncLastSynced": "Last synced {time}",
+  "@syncLastSynced": {
+    "description": "Sub-line under the sync status; the time is a relative or absolute label",
+    "placeholders": {
+      "time": {
+        "type": "String",
+        "example": "5 min ago"
+      }
+    }
+  },
+  "syncRelativeJustNow": "just now",
+  "@syncRelativeJustNow": {
+    "description": "Relative time for the last minute"
+  },
+  "syncRelativeMinutesAgo": "{count, plural, one{{count} min ago} other{{count} min ago}}",
+  "@syncRelativeMinutesAgo": {
+    "description": "Relative time in minutes. Russian needs one/few/many/other.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "22"
+      }
+    }
+  },
+  "syncRelativeHoursAgo": "{count, plural, one{{count} h ago} other{{count} h ago}}",
+  "@syncRelativeHoursAgo": {
+    "description": "Relative time in hours. Russian needs one/few/many/other.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "syncErrorAuthRevoked": "Google access was revoked — connect Drive again",
+  "@syncErrorAuthRevoked": {
+    "description": "Sync error after the refresh token was revoked"
+  },
+  "syncErrorAuthExpired": "Google access expired — connect Drive again",
+  "@syncErrorAuthExpired": {
+    "description": "Sync error after Drive answered 401"
+  },
+  "syncErrorDriveFull": "Google Drive is full",
+  "@syncErrorDriveFull": {
+    "description": "Sync error after Drive answered 403 storageQuotaExceeded"
+  },
+  "syncErrorDrive": "Drive error: {message}",
+  "@syncErrorDrive": {
+    "description": "Sync error carrying Google's own untranslated message",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "backendError"
+      }
+    }
+  },
+  "syncNowButton": "Sync now",
+  "@syncNowButton": {
+    "description": "Button that starts a sync pass immediately"
+  },
+  "syncedSnack": "Synced",
+  "@syncedSnack": {
+    "description": "Snackbar after a successful manual sync"
+  },
+  "syncFailedSnack": "Sync failed — see status above",
+  "@syncFailedSnack": {
+    "description": "Snackbar after a failed manual sync"
+  },
+
+  "driveStandaloneNotice": "Standalone mode — everything works offline on this device. Connect Google Drive to sync with the Telegram bot; your data stays in your own Drive as readable JSON.",
+  "@driveStandaloneNotice": {
+    "description": "Notice box shown while no Google account is connected"
+  },
+  "driveNoClientNotice": "This build has no Google OAuth client compiled in. Rebuild with --dart-define=GOOGLE_CLIENT_ID=… and --dart-define=GOOGLE_CLIENT_SECRET=… to enable Drive sync.",
+  "@driveNoClientNotice": {
+    "description": "Notice box shown when the app was built without the OAuth dart-defines. Keep the --dart-define flag names untranslated."
+  },
+  "driveConnectButton": "Connect Google Drive",
+  "@driveConnectButton": {
+    "description": "Button that starts the OAuth device flow"
+  },
+  "driveReconnectButton": "Reconnect Drive",
+  "@driveReconnectButton": {
+    "description": "Button that restarts the OAuth device flow after Google access was revoked or expired"
+  },
+  "driveDisconnectButton": "Disconnect",
+  "@driveDisconnectButton": {
+    "description": "Button that revokes the token and returns to standalone mode"
+  },
+  "driveStepOpenLink": "STEP 1 — OPEN THIS LINK",
+  "@driveStepOpenLink": {
+    "description": "Uppercase step label above the Google verification URL"
+  },
+  "driveStepEnterCode": "STEP 2 — ENTER THIS CODE",
+  "@driveStepEnterCode": {
+    "description": "Uppercase step label above the user code"
+  },
+  "driveWaitingForApproval": "Waiting for you to approve…",
+  "@driveWaitingForApproval": {
+    "description": "Progress line before the first poll of the device flow"
+  },
+  "driveWaitingChecked": "{count, plural, one{Waiting for approval… (checked {count}×)} other{Waiting for approval… (checked {count}×)}}",
+  "@driveWaitingChecked": {
+    "description": "Progress line with the poll counter. Russian needs one/few/many/other.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "driveConnectedSnack": "Google Drive connected — syncing",
+  "@driveConnectedSnack": {
+    "description": "Snackbar after the device flow completes"
+  },
+  "driveDisconnectedSnack": "Disconnected — standalone mode",
+  "@driveDisconnectedSnack": {
+    "description": "Snackbar after disconnecting the Google account"
+  },
+  "driveCodeCopied": "Code copied",
+  "@driveCodeCopied": {
+    "description": "Snackbar after copying the device user code"
+  },
+  "driveLinkCopied": "Link copied — open it in a browser",
+  "@driveLinkCopied": {
+    "description": "Snackbar when no browser could be launched and the URL was copied instead"
+  },
+  "driveConnectionTitle": "Google Drive",
+  "@driveConnectionTitle": {
+    "description": "Title of the connection summary before the folder is known. Brand — keep identical."
+  },
+  "driveConnectionTitleFolder": "Google Drive · {folder}/",
+  "@driveConnectionTitleFolder": {
+    "description": "Title of the connection summary with the resolved Drive folder",
+    "placeholders": {
+      "folder": {
+        "type": "String",
+        "example": "Tally"
+      }
+    }
+  },
+  "driveConnectionUnknownDevice": "This device publishes its own snapshot file.",
+  "@driveConnectionUnknownDevice": {
+    "description": "Sub-line of the connection summary before the device identity loads"
+  },
+  "driveConnectionDevice": "This device: {device} · {file}",
+  "@driveConnectionDevice": {
+    "description": "Sub-line naming this peer and the snapshot file it owns",
+    "placeholders": {
+      "device": {
+        "type": "String",
+        "example": "Pixel 7"
+      },
+      "file": {
+        "type": "String",
+        "example": "tally-b2c3.json"
+      }
+    }
+  },
+  "authErrorNoClient": "This build has no Google OAuth client compiled in.",
+  "@authErrorNoClient": {
+    "description": "Device-flow failure: the app was built without the OAuth dart-defines"
+  },
+  "authErrorDenied": "You declined the request on Google.",
+  "@authErrorDenied": {
+    "description": "Device-flow failure: the user pressed Deny"
+  },
+  "authErrorExpired": "The code expired — try again.",
+  "@authErrorExpired": {
+    "description": "Device-flow failure: the user code timed out"
+  },
+  "authErrorNetwork": "No connection to Google — check your network.",
+  "@authErrorNetwork": {
+    "description": "Device-flow failure: the device is offline"
+  },
+
+  "seedCategoryGroceries": "Groceries",
+  "@seedCategoryGroceries": {
+    "description": "Seed category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryCafe": "Cafe",
+  "@seedCategoryCafe": {
+    "description": "Seed category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryTransport": "Transport",
+  "@seedCategoryTransport": {
+    "description": "Seed category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryHome": "Home",
+  "@seedCategoryHome": {
+    "description": "Seed category for housing costs. Shown only while the user has not renamed it."
+  },
+  "seedCategoryUtilities": "Utilities",
+  "@seedCategoryUtilities": {
+    "description": "Seed category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryHealth": "Health",
+  "@seedCategoryHealth": {
+    "description": "Seed category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryShopping": "Shopping",
+  "@seedCategoryShopping": {
+    "description": "Seed category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryFun": "Fun",
+  "@seedCategoryFun": {
+    "description": "Seed category for entertainment. Shown only while the user has not renamed it."
+  },
+  "seedCategorySubscriptions": "Subscriptions",
+  "@seedCategorySubscriptions": {
+    "description": "Seed category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryTravel": "Travel",
+  "@seedCategoryTravel": {
+    "description": "Seed category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryOther": "Other",
+  "@seedCategoryOther": {
+    "description": "Catch-all seed expense category. Shown only while the user has not renamed it."
+  },
+  "seedCategorySalary": "Salary",
+  "@seedCategorySalary": {
+    "description": "Seed income category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryFreelance": "Freelance",
+  "@seedCategoryFreelance": {
+    "description": "Seed income category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryGifts": "Gifts",
+  "@seedCategoryGifts": {
+    "description": "Seed income category. Shown only while the user has not renamed it."
+  },
+  "seedCategoryOtherIncome": "Other income",
+  "@seedCategoryOtherIncome": {
+    "description": "Catch-all seed income category. Shown only while the user has not renamed it."
+  },
+
+  "currencyUSD": "US Dollar",
+  "@currencyUSD": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyEUR": "Euro",
+  "@currencyEUR": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyGBP": "British Pound",
+  "@currencyGBP": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyUAH": "Ukrainian Hryvnia",
+  "@currencyUAH": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyPLN": "Polish Zloty",
+  "@currencyPLN": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyCZK": "Czech Koruna",
+  "@currencyCZK": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyCHF": "Swiss Franc",
+  "@currencyCHF": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencySEK": "Swedish Krona",
+  "@currencySEK": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyNOK": "Norwegian Krone",
+  "@currencyNOK": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyDKK": "Danish Krone",
+  "@currencyDKK": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyJPY": "Japanese Yen",
+  "@currencyJPY": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyCNY": "Chinese Yuan",
+  "@currencyCNY": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyINR": "Indian Rupee",
+  "@currencyINR": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyCAD": "Canadian Dollar",
+  "@currencyCAD": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyAUD": "Australian Dollar",
+  "@currencyAUD": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyNZD": "New Zealand Dollar",
+  "@currencyNZD": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyBRL": "Brazilian Real",
+  "@currencyBRL": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyMXN": "Mexican Peso",
+  "@currencyMXN": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyTRY": "Turkish Lira",
+  "@currencyTRY": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyKRW": "South Korean Won",
+  "@currencyKRW": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencySGD": "Singapore Dollar",
+  "@currencySGD": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyHKD": "Hong Kong Dollar",
+  "@currencyHKD": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyILS": "Israeli Shekel",
+  "@currencyILS": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyAED": "UAE Dirham",
+  "@currencyAED": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyZAR": "South African Rand",
+  "@currencyZAR": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyRUB": "Russian Ruble",
+  "@currencyRUB": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyUZS": "Uzbek Sum",
+  "@currencyUZS": {
+    "description": "Currency name in the currency picker"
+  },
+  "currencyKZT": "Kazakhstani Tenge",
+  "@currencyKZT": {
+    "description": "Currency name in the currency picker"
+  }
+}

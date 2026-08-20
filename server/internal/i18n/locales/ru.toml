@@ -1,0 +1,188 @@
+# Tally Telegram bot — русский каталог.
+#
+# Плюрализация: русский требует полного набора CLDR one/few/many/other.
+#   one  — 1, 21, 101   (i%10==1 && i%100!=11)
+#   few  — 2, 22, 103   (i%10∈2..4 && i%100∉12..14)
+#   many — 5, 11, 111   (всё остальное)
+
+# --- general ---------------------------------------------------------------
+
+[start]
+other = """
+👋 Tally — записывайте траты за 3 секунды.
+
+Просто отправьте сообщение:
+  250 продукты за неделю
+  250.50 такси
+  +50000 зарплата
+
+Первое слово — сумма (+ означает доход), второе выбирает категорию, остальное станет заметкой.
+
+Команды:
+/today  /week  /month — сводки
+/undo — удалить последнюю запись
+/categories — список категорий"""
+
+[unauthorized]
+other = "⛔ Нет доступа."
+
+[unknown_command]
+other = "🤔 Неизвестная команда. Отправьте /start для справки."
+
+# --- entry -----------------------------------------------------------------
+
+[hint_amount]
+other = """
+🤔 Не удалось прочитать сумму. Попробуйте так:
+250 продукты за неделю
+250.50 такси
++50000 зарплата"""
+
+[pick_category]
+other = "Выберите категорию для {{.Amount}}:"
+
+[button_new_category]
+other = "➕ Новая: «{{.Word}}»"
+
+[nothing_pending]
+other = "Нечего подтверждать — сначала отправьте сумму, например 250 продукты"
+
+[new_category_needs_word]
+other = "🤔 Не знаю, как назвать новую категорию. Отправьте запись со словом, например 250 книги"
+
+[category_gone]
+other = "⚠️ Этой категории больше нет. Отправьте запись ещё раз."
+
+[category_wrong_kind]
+other = "⚠️ {{.Category}} — это {{.Kind}}. Отправьте запись ещё раз."
+
+[kind_income]
+other = "категория доходов"
+
+[kind_expense]
+other = "категория расходов"
+
+[entry_saved]
+other = "✅ {{.Amount}} • {{.Category}} — {{.Total}} за месяц"
+
+# --- summaries -------------------------------------------------------------
+
+[summary_today]
+other = "📊 Сегодня · {{.Date}}"
+
+[summary_week]
+other = "📊 Эта неделя · {{.From}} — {{.To}}"
+
+[summary_month]
+other = "📊 {{.Month}}"
+
+[summary_net]
+other = "Итого: {{.Amount}}"
+
+[summary_income]
+other = "Доходы: {{.Amount}}"
+
+[summary_expenses]
+other = "Расходы: {{.Amount}}"
+
+[summary_top]
+other = "Больше всего потрачено:"
+
+[summary_empty]
+other = "Пока нет операций."
+
+[tx_count]
+one = "{{.Count}} операция"
+few = "{{.Count}} операции"
+many = "{{.Count}} операций"
+other = "{{.Count}} операции"
+
+# --- undo ------------------------------------------------------------------
+
+[undo_removed]
+other = "↩️ Удалено: {{.Amount}} • {{.Category}}"
+
+[undo_nothing]
+other = "Отменять нечего."
+
+[unknown_category]
+other = "(категория неизвестна)"
+
+# --- categories ------------------------------------------------------------
+
+[categories_expense]
+other = "Категории расходов:"
+
+[categories_income]
+other = "Категории доходов:"
+
+[categories_empty]
+other = "Пока нет категорий."
+
+# --- errors ----------------------------------------------------------------
+
+[error_generic]
+other = "⚠️ Что-то пошло не так, попробуйте ещё раз."
+
+[error_save]
+other = "⚠️ Не удалось сохранить, попробуйте ещё раз."
+
+[error_summary]
+other = "⚠️ Не удалось собрать сводку."
+
+[error_undo]
+other = "⚠️ Не удалось отменить."
+
+[error_categories]
+other = "⚠️ Не удалось получить список категорий."
+
+[error_create_category]
+other = "⚠️ Не удалось создать категорию."
+
+# --- seed category names ---------------------------------------------------
+# Совпадают со строками seedCategory* в ARB-каталогах приложения.
+
+[cat_groceries]
+other = "Продукты"
+
+[cat_cafe]
+other = "Кафе"
+
+[cat_transport]
+other = "Транспорт"
+
+[cat_home]
+other = "Жильё"
+
+[cat_utilities]
+other = "Коммуналка"
+
+[cat_health]
+other = "Здоровье"
+
+[cat_shopping]
+other = "Покупки"
+
+[cat_fun]
+other = "Развлечения"
+
+[cat_subscriptions]
+other = "Подписки"
+
+[cat_travel]
+other = "Путешествия"
+
+[cat_other]
+other = "Прочее"
+
+[cat_salary]
+other = "Зарплата"
+
+[cat_freelance]
+other = "Фриланс"
+
+[cat_gifts]
+other = "Подарки"
+
+[cat_other_income]
+other = "Прочий доход"

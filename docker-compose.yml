@@ -1,0 +1,23 @@
+services:
+  tally:
+    build: ./server
+    env_file: .env
+    # The server only ever makes OUTBOUND calls (Telegram long polling and
+    # Google Drive), so nothing has to be reachable from the internet: no
+    # public port, no hostname, no TLS. 8080 stays bound to loopback purely so
+    # an uptime checker on the host can hit /api/health; the container's own
+    # healthcheck below does not need it published at all.
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # The SQLite database AND the Google refresh token live here, never in
+      # the image: `docker compose run --rm tally auth` writes the token to
+      # /data/google-token.json (mode 0600) and it must survive a rebuild.
+      - ./data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

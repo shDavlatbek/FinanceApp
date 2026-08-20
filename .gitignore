@@ -1,0 +1,19 @@
+# Data & secrets
+.env
+data/
+*.db
+
+# Go
+server/tally
+server/tally.exe
+
+# Flutter/Dart — app/.gitignore covers the app dir; extras here
+app/.dart_tool/
+app/build/
+
+# Generated screen captures (regenerate: see app/test/capture_screens_test.dart)
+app/test/shots/
+
+# OS
+.DS_Store
+Thumbs.db
