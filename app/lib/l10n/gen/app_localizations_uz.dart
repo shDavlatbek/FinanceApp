@@ -564,4 +564,53 @@ class AppLocalizationsUz extends AppLocalizations {
 
   @override
   String get currencyKZT => 'Qozogʻiston tengesi';
+
+  @override
+  String get periodDay => 'Kun';
+
+  @override
+  String get periodMonth => 'Oy';
+
+  @override
+  String get periodSwitchToDay => 'Kunlar boʻyicha koʻrsatish';
+
+  @override
+  String get periodSwitchToMonth => 'Butun oyni koʻrsatish';
+
+  @override
+  String get homeNetToday => 'BUGUNGI SOF QOLDIQ';
+
+  @override
+  String homeNetForDay({required String date}) {
+    return 'SOF · $date';
+  }
+
+  @override
+  String get homeNothingSpentDayTitle => 'Bugun hech narsa sarflanmadi';
+
+  @override
+  String get homeNothingSpentDayMessage => 'Hamyon uchun tinch kun.';
+
+  @override
+  String get homeDayEntriesSection => 'Yozuvlar';
+
+  @override
+  String get seedAccountCash => 'Naqd pul';
+
+  @override
+  String get seedAccountCard => 'Karta';
+
+  @override
+  String get seedAccountSavings => 'Jamgʻarma';
+
+  @override
+  String get seedAccountInvestments => 'Investitsiyalar';
+
+  @override
+  String get transactionTransfer => 'Oʻtkazma';
+
+  @override
+  String transactionTransferRoute({required String from, required String to}) {
+    return '$from → $to';
+  }
 }

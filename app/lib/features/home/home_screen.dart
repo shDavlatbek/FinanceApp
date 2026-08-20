@@ -1,6 +1,7 @@
-/// Home — the month at a glance: hero net number (count-up), income/spent
-/// chips, month switcher, staggered per-category spending bars, and the five
-/// most recent transactions.
+/// Home — the selected period at a glance: hero net number (count-up),
+/// income/spent chips, the period switcher and its `Day · Month` lens toggle,
+/// staggered per-category spending bars, and the period's transactions (the
+/// five most recent in the month lens, the whole day in the day lens).
 library;
 
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ import '../common/cards.dart';
 import '../common/count_up_amount.dart';
 import '../common/empty_state.dart';
 import '../common/format.dart';
-import '../common/month_switcher.dart';
+import '../common/period_switcher.dart';
 import '../common/sync_indicator.dart';
 import '../common/transaction_tile.dart';
 import '../entry/entry_sheet.dart';
@@ -31,15 +32,32 @@ class HomeScreen extends ConsumerWidget {
     final theme = Theme.of(context).textTheme;
     final l10n = context.l10n;
     final locale = context.localeTag;
-    final month = ref.watch(selectedMonthProvider);
+    final mode = ref.watch(periodModeProvider);
+    final periodStart = ref.watch(selectedPeriodStartProvider);
     final currency = ref.watch(currencyProvider).value ?? defaultCurrency;
-    final totals = ref.watch(monthTotalsProvider).value;
-    final categoryTotals =
-        ref.watch(categoryTotalsProvider).value ?? const <CategoryTotal>[];
+    final totals = ref.watch(periodTotalsProvider).value;
+    final categoryTotals = ref.watch(periodCategoryTotalsProvider).value ??
+        const <CategoryTotal>[];
     final recent =
-        ref.watch(recentTransactionsProvider).value ?? const <Transaction>[];
+        ref.watch(periodTransactionsProvider).value ?? const <Transaction>[];
 
-    final isCurrentMonth = isSameMonth(month, DateTime.now());
+    final now = DateTime.now();
+    final isCurrentPeriod = switch (mode) {
+      PeriodMode.day => isSameDay(periodStart, now),
+      PeriodMode.month => isSameMonth(periodStart, now),
+    };
+    // The hero caption names the period unless it is the current one, where
+    // "NET THIS MONTH" / "NET TODAY" reads better than repeating the date.
+    final heroCaption = switch ((mode, isCurrentPeriod)) {
+      (PeriodMode.day, true) => l10n.homeNetToday,
+      (PeriodMode.day, false) => l10n.homeNetForDay(
+          date: dayLabel(periodStart, locale: locale).toUpperCase(),
+        ),
+      (PeriodMode.month, true) => l10n.homeNetThisMonth,
+      (PeriodMode.month, false) => l10n.homeNetForMonth(
+          month: monthLabel(periodStart, locale: locale).toUpperCase(),
+        ),
+    };
     final showEmpty = totals != null &&
         totals.incomeMinor == 0 &&
         totals.expenseMinor == 0 &&
@@ -75,12 +93,8 @@ class HomeScreen extends ConsumerWidget {
                     child: Column(
                       children: [
                         Text(
-                          isCurrentMonth
-                              ? l10n.homeNetThisMonth
-                              : l10n.homeNetForMonth(
-                                  month: monthLabel(month, locale: locale)
-                                      .toUpperCase(),
-                                ),
+                          heroCaption,
+                          textAlign: TextAlign.center,
                           style: theme.labelSmall,
                         ),
                         const SizedBox(height: 10),
@@ -119,7 +133,9 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  const Center(child: MonthSwitcher()),
+                  const Center(child: PeriodSwitcher()),
+                  const SizedBox(height: 10),
+                  const Center(child: PeriodModeToggle()),
                   const SizedBox(height: 28),
 
                   // ---- content ------------------------------------------
@@ -136,8 +152,12 @@ class HomeScreen extends ConsumerWidget {
                     if (categoryTotals.isEmpty)
                       EmptyState(
                         emoji: '🍃',
-                        title: l10n.homeNothingSpentTitle,
-                        message: l10n.homeNothingSpentMessage,
+                        title: mode == PeriodMode.day
+                            ? l10n.homeNothingSpentDayTitle
+                            : l10n.homeNothingSpentTitle,
+                        message: mode == PeriodMode.day
+                            ? l10n.homeNothingSpentDayMessage
+                            : l10n.homeNothingSpentMessage,
                         compact: true,
                       )
                     else
@@ -150,7 +170,9 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     const SizedBox(height: 24),
                     SectionHeader(
-                      l10n.homeRecentSection,
+                      mode == PeriodMode.day
+                          ? l10n.homeDayEntriesSection
+                          : l10n.homeRecentSection,
                       trailing: TextButton(
                         onPressed: () => context.go('/history'),
                         child: Text(l10n.commonAll),

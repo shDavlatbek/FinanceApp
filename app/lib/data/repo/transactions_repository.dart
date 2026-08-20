@@ -40,17 +40,29 @@ class TransactionsRepository {
   Stream<List<Transaction>> watchMonth(DateTime month) =>
       watchFiltered(month: month);
 
+  /// All non-deleted transactions on the local calendar day of [day],
+  /// newest first — the day lens's counterpart to [watchMonth].
+  Stream<List<Transaction>> watchDay(DateTime day) => watchFiltered(day: day);
+
   /// Filtered list for History: optional note substring search
   /// (case-insensitive), category, kind, and month filters. Newest first.
+  /// Passing both [month] and [day] is a caller error: [day] wins, because a
+  /// day is the narrower lens.
   Stream<List<Transaction>> watchFiltered({
     String? noteQuery,
     String? categoryId,
     String? kind,
     DateTime? month,
+    DateTime? day,
   }) {
     final q = _db.select(_db.transactions)
       ..where((t) => t.deletedAtMs.isNull());
-    if (month != null) {
+    if (day != null) {
+      final bounds = dayQueryBounds(day);
+      q.where((t) =>
+          t.occurredAt.isBiggerOrEqualValue(bounds.start) &
+          t.occurredAt.isSmallerThanValue(bounds.end));
+    } else if (month != null) {
       final bounds = monthQueryBounds(month);
       q.where((t) =>
           t.occurredAt.isBiggerOrEqualValue(bounds.start) &
@@ -85,6 +97,7 @@ class TransactionsRepository {
     required String kind,
     required int amountMinor,
     required String categoryId,
+    String accountId = defaultAccountId,
     String note = '',
     DateTime? occurredAt,
     String source = TxSource.app,
@@ -95,6 +108,55 @@ class TransactionsRepository {
       kind: kind,
       amountMinor: amountMinor,
       categoryId: categoryId,
+      accountId: accountId,
+      toAccountId: '',
+      note: note,
+      occurredAt: toOccurredAt(occurredAt ?? DateTime.now()),
+      source: source,
+      createdAtMs: nowMs,
+      updatedAtMs: nowMs,
+      deletedAtMs: null,
+      dirty: true,
+    );
+    await _db.into(_db.transactions).insert(row);
+    _onMutation?.call();
+    return row;
+  }
+
+  /// Records a transfer: money moved between two of the owner's OWN accounts.
+  ///
+  /// One row, never a matched expense/income pair — a pair could half-arrive,
+  /// be edited out of balance, or be half-deleted under last-write-wins.
+  /// [categoryId] is deliberately empty: moving your own money is not
+  /// spending, so it has no category and lands in no total.
+  ///
+  /// Throws [ArgumentError] when the two accounts are the same (a no-op that
+  /// would still show up in history as money moving) or the amount is not
+  /// positive — the sign is implied by the direction, never by the amount.
+  Future<Transaction> insertTransfer({
+    required int amountMinor,
+    required String fromAccountId,
+    required String toAccountId,
+    String note = '',
+    DateTime? occurredAt,
+    String source = TxSource.app,
+  }) async {
+    if (fromAccountId == toAccountId) {
+      throw ArgumentError.value(
+          toAccountId, 'toAccountId', 'cannot transfer to the same account');
+    }
+    if (amountMinor <= 0) {
+      throw ArgumentError.value(
+          amountMinor, 'amountMinor', 'must be greater than zero');
+    }
+    final nowMs = _now();
+    final row = Transaction(
+      id: _uuid.v4(),
+      kind: Kind.transfer,
+      amountMinor: amountMinor,
+      categoryId: '',
+      accountId: fromAccountId,
+      toAccountId: toAccountId,
       note: note,
       occurredAt: toOccurredAt(occurredAt ?? DateTime.now()),
       source: source,
@@ -115,6 +177,8 @@ class TransactionsRepository {
     String? kind,
     int? amountMinor,
     String? categoryId,
+    String? accountId,
+    String? toAccountId,
     String? note,
     DateTime? occurredAt,
   }) async {
@@ -125,6 +189,9 @@ class TransactionsRepository {
             amountMinor == null ? const Value.absent() : Value(amountMinor),
         categoryId:
             categoryId == null ? const Value.absent() : Value(categoryId),
+        accountId: accountId == null ? const Value.absent() : Value(accountId),
+        toAccountId:
+            toAccountId == null ? const Value.absent() : Value(toAccountId),
         note: note == null ? const Value.absent() : Value(note),
         occurredAt: occurredAt == null
             ? const Value.absent()

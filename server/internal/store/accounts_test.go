@@ -401,3 +401,58 @@ func TestMigrateFromPreAccountsSchema(t *testing.T) {
 		t.Error("idx_transactions_occurred_at was not recreated after the rebuild")
 	}
 }
+
+// A self-transfer must never invent money.
+//
+// Regression: the balance query used a single CASE whose first matching arm
+// won, so for a row with account_id == to_account_id the credit arm matched
+// and the debit arm was never reached — the balance grew by the full amount
+// out of nothing. The sanitizer rejects such rows, but a balance formula must
+// not depend on an upstream check to stay arithmetically sound.
+func TestSelfTransferCannotInventMoney(t *testing.T) {
+	s := openTestStore(t)
+
+	// Inserted through the LWW path directly, bypassing the sanitizer, which
+	// is exactly how a hand-edited peer file would arrive before the fix.
+	if err := s.InsertTransaction(
+		tx("self", model.KindTransfer, 250000, "", accCash, accCash, "2026-08-20T00:00:00Z")); err != nil {
+		t.Fatal(err)
+	}
+
+	balances, err := s.AccountBalances()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, ab := range balances {
+		if ab.Account.ID == accCash && ab.BalanceMinor != 0 {
+			t.Fatalf("cash balance = %d, want 0: a self-transfer created money",
+				ab.BalanceMinor)
+		}
+	}
+}
+
+// The bot echoes a category's month total after every single entry, so a
+// transfer must never reach it — including one that arrived carrying a stray
+// category_id from a hand-edited peer file.
+func TestCategoryPeriodTotalIgnoresTransfers(t *testing.T) {
+	s := openTestStore(t)
+	from := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	to := from.AddDate(0, 1, 0)
+
+	if err := s.InsertTransaction(
+		tx("spend", model.KindExpense, 25000, catFood, accCash, "", "2026-08-02T00:00:00Z")); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.InsertTransaction(
+		tx("moved", model.KindTransfer, 900000, catFood, accCash, accSavings, "2026-08-03T00:00:00Z")); err != nil {
+		t.Fatal(err)
+	}
+
+	total, err := s.CategoryPeriodTotal(catFood, from, to)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if total != 25000 {
+		t.Fatalf("category total = %d, want 25000 (a transfer was counted)", total)
+	}
+}

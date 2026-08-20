@@ -5,8 +5,19 @@
 /// identical rows so they merge cleanly on first sync. DO NOT change them.
 library;
 
-/// `updated_at_ms` for every seeded row (categories + settings).
+/// `updated_at_ms` for every seeded row (categories + accounts).
 const int seedUpdatedAtMs = 1755000000000;
+
+/// `updated_at_ms` the settings singleton is seeded with: "nobody has chosen
+/// anything yet".
+///
+/// Deliberately NOT [seedUpdatedAtMs]. Settings is the one seeded row whose
+/// contents differ per peer — the app seeds USD while the server seeds its
+/// DEFAULT_CURRENCY — and under the contract's strict LWW ("ties keep the
+/// local row") two identical timestamps freeze the row on both sides forever.
+/// Zero loses to every real value in both directions, and rows with
+/// `updated_at_ms == 0` are never published to peers.
+const int settingsUnsetMs = 0;
 
 /// Fixed id of the settings singleton row.
 const String settingsRowId = 'settings';
@@ -21,10 +32,48 @@ const String defaultLanguage = '';
 /// Language codes the app and the bot both support. `''` = follow device.
 const List<String> supportedLanguageCodes = ['', 'en', 'ru', 'uz'];
 
-/// Transaction / category kinds.
+/// Transaction kinds. Categories only ever use [income] / [expense] —
+/// [transfer] is a transaction-only kind.
 abstract final class Kind {
   static const String income = 'income';
   static const String expense = 'expense';
+
+  /// Money moved between two of the owner's OWN accounts. Never income, never
+  /// spending: it must stay out of every total, breakdown and count.
+  static const String transfer = 'transfer';
+
+  /// Kinds a category may carry.
+  static const List<String> categoryKinds = [income, expense];
+
+  static bool isValidTransaction(String v) =>
+      v == income || v == expense || v == transfer;
+
+  static bool isValidCategory(String v) => v == income || v == expense;
+}
+
+/// Which lens Home and Stats are showing: one calendar day, or one month.
+///
+/// A per-device UI preference, persisted in the local meta table — unlike
+/// `settings.language`, the bot has no use for which lens you last used.
+enum PeriodMode {
+  day,
+  month;
+
+  static PeriodMode fromName(String? raw) =>
+      raw == PeriodMode.day.name ? PeriodMode.day : PeriodMode.month;
+}
+
+/// Account kinds. Presentation and grouping only — every account holds money
+/// the same way, which is what makes "send to savings" an ordinary transfer.
+abstract final class AccountKind {
+  static const String cash = 'cash';
+  static const String bank = 'bank';
+  static const String savings = 'savings';
+  static const String investment = 'investment';
+
+  static const List<String> all = [cash, bank, savings, investment];
+
+  static bool isValid(String v) => all.contains(v);
 }
 
 /// Transaction sources.
@@ -58,6 +107,10 @@ abstract final class MetaKeys {
   /// like the rest: the theme is a per-device choice, unlike `settings.language`
   /// which is synced because the Telegram bot reads it.
   static const String uiThemeMode = 'ui_theme_mode';
+
+  /// Home/Stats period lens (`'day'` | `'month'`). Local-only and per-device:
+  /// which lens you last looked through is not data the bot has any use for.
+  static const String uiPeriodMode = 'ui_period_mode';
 }
 
 /// Google Drive sync constants (docs/ARCHITECTURE.md § Google Drive sync).
@@ -94,8 +147,15 @@ const String snapshotNamePrefix = 'tally-';
 const String snapshotNameSuffix = '.json';
 const String snapshotMimeType = 'application/json';
 
-/// `schema` field of the snapshot envelope.
-const int snapshotSchemaVersion = 1;
+/// `schema` field of the snapshot envelope written by this build. Schema 2
+/// added accounts, per-transaction account ids and the `transfer` kind.
+const int snapshotSchemaVersion = 2;
+
+/// Oldest snapshot schema this build still reads. A schema-1 file predates
+/// accounts: it has no `accounts` array and its transactions have no
+/// `account_id`, so they are booked to [defaultAccountId] — exactly where the
+/// local migration puts this peer's own pre-accounts rows.
+const int minReadableSnapshotSchema = 1;
 
 /// Snapshot file name for a device id.
 String snapshotFileName(String deviceId) =>
@@ -240,6 +300,78 @@ const List<SeedCategory> seedCategories = [
     emoji: '➕',
     color: '#8E8E93',
     kind: Kind.income,
+    sortOrder: 3,
+  ),
+];
+
+/// One fixed seed account row.
+class SeedAccount {
+  const SeedAccount({
+    required this.id,
+    required this.name,
+    required this.kind,
+    required this.emoji,
+    required this.color,
+    required this.sortOrder,
+  });
+
+  final String id;
+  final String name;
+  final String kind;
+  final String emoji;
+  final String color;
+  final int sortOrder;
+}
+
+/// The seed cash account's fixed id.
+///
+/// Spelled separately from [defaultAccountId] because drift's generator drops
+/// import prefixes when it inlines a column's `withDefault` constant: a column
+/// named `defaultAccountId` would end up referring to ITSELF in the generated
+/// table class. The tables reference this name; everything else reads better
+/// as [defaultAccountId].
+const String seedCashAccountId = 'a1c7e2f0-0001-4a00-9000-000000000001';
+
+/// The account new entries book to until the owner picks another, and the
+/// fallback a peer uses for any transaction that arrives without a usable
+/// `account_id`. Byte-identical to `store.DefaultAccountID` on the server.
+const String defaultAccountId = seedCashAccountId;
+
+/// Seed accounts — FIXED UUIDs, copied exactly from docs/ARCHITECTURE.md and
+/// byte-identical to `store.SeedAccounts` on the server. Savings and
+/// investments are seeded rather than left to the user so that "send to
+/// savings" works on a fresh install with no setup step.
+const List<SeedAccount> seedAccounts = [
+  SeedAccount(
+    id: seedCashAccountId,
+    name: 'Cash',
+    kind: AccountKind.cash,
+    emoji: '💵',
+    color: '#4CAF7D',
+    sortOrder: 0,
+  ),
+  SeedAccount(
+    id: 'a1c7e2f0-0002-4a00-9000-000000000002',
+    name: 'Card',
+    kind: AccountKind.bank,
+    emoji: '💳',
+    color: '#5A9BE8',
+    sortOrder: 1,
+  ),
+  SeedAccount(
+    id: 'a1c7e2f0-0003-4a00-9000-000000000003',
+    name: 'Savings',
+    kind: AccountKind.savings,
+    emoji: '🏦',
+    color: '#E8C95A',
+    sortOrder: 2,
+  ),
+  SeedAccount(
+    id: 'a1c7e2f0-0004-4a00-9000-000000000004',
+    name: 'Investments',
+    kind: AccountKind.investment,
+    emoji: '📈',
+    color: '#9B7DE8',
     sortOrder: 3,
   ),
 ];

@@ -1,4 +1,9 @@
 /// One transaction row: emoji medallion, category, note/time, signed amount.
+///
+/// A transfer is rendered differently on purpose: it carries no category, so
+/// it shows the two accounts it moves between and an UNSIGNED amount in the
+/// neutral ink. Falling through the category path would label it
+/// "Uncategorized" and print a green "+", i.e. money the owner never earned.
 library;
 
 import 'package:flutter/material.dart';
@@ -24,12 +29,29 @@ class TransactionTile extends ConsumerWidget {
     final locale = context.localeTag;
     final category = ref.watch(categoriesByIdProvider)[tx.categoryId];
     final currency = ref.watch(currencyProvider).value ?? defaultCurrency;
+    final isTransfer = tx.kind == Kind.transfer;
+    final accounts = isTransfer
+        ? ref.watch(accountsByIdProvider)
+        : const <String, Account>{};
 
-    final categoryColor =
-        category != null ? colorFromHex(category.color) : t.textSecondary;
+    String accountLabel(String id) {
+      final Account? a = accounts[id];
+      if (a == null) return '—';
+      return context.accountName(id: a.id, name: a.name);
+    }
+
+    final categoryColor = isTransfer
+        ? t.textSecondary
+        : (category != null ? colorFromHex(category.color) : t.textSecondary);
     final when = occurredAtToLocal(tx.occurredAt);
     final subtitleParts = [
-      if (tx.note.isNotEmpty) tx.note else timeLabel(when, locale: locale),
+      if (isTransfer)
+        l10n.transactionTransferRoute(
+          from: accountLabel(tx.accountId),
+          to: accountLabel(tx.toAccountId),
+        ),
+      if (tx.note.isNotEmpty) tx.note
+      else if (!isTransfer) timeLabel(when, locale: locale),
       if (tx.source == TxSource.telegram) l10n.sourceTelegram,
     ];
     final isIncome = tx.kind == Kind.income;
@@ -51,7 +73,8 @@ class TransactionTile extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(13),
                 ),
                 child: Center(
-                  child: Text(category?.emoji ?? '❓',
+                  child: Text(
+                      isTransfer ? '🔄' : (category?.emoji ?? '❓'),
                       style: const TextStyle(fontSize: 19)),
                 ),
               ),
@@ -61,12 +84,14 @@ class TransactionTile extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      category == null
-                          ? l10n.transactionUncategorized
-                          : context.categoryName(
-                              id: category.id,
-                              name: category.name,
-                            ),
+                      isTransfer
+                          ? l10n.transactionTransfer
+                          : (category == null
+                              ? l10n.transactionUncategorized
+                              : context.categoryName(
+                                  id: category.id,
+                                  name: category.name,
+                                )),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.bodyLarge!
@@ -92,7 +117,9 @@ class TransactionTile extends ConsumerWidget {
                 ),
                 style: money(theme.bodyLarge!).copyWith(
                   fontWeight: FontWeight.w700,
-                  color: isIncome ? t.income : t.expense,
+                  color: isTransfer
+                      ? t.textSecondary
+                      : (isIncome ? t.income : t.expense),
                 ),
               ),
             ],

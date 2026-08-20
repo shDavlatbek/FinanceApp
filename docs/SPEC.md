@@ -41,6 +41,7 @@
 - **Stats:** category donut + 6-month trend bars, per-month navigation
 - **Categories:** add/edit/archive, emoji + color pickers, reorder
 - **Accounts:** add/edit/archive, emoji + color pickers, opening balance, live balances, pick the bot's default account
+- **Day / Month lens:** a small toggle on Home and Stats switches every figure between one calendar day and one month — daily spending at a glance, not just monthly
 - **Transfers:** move money between accounts from the entry sheet; excluded from every income/expense total
 - **Backup:** export a JSON backup or a CSV, import a JSON backup (merge, newest wins)
 - **Settings:** server URL + API token, connection test, sync status/last-synced, currency picker, standalone-mode notice

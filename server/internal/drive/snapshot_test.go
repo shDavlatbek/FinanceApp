@@ -314,3 +314,97 @@ func TestSnapshotBatchSanitizesTransfers(t *testing.T) {
 		t.Errorf("stray to_account_id survived on an expense: %q", stray.ToAccountID)
 	}
 }
+
+// The sanitizer must not MANUFACTURE the row it refuses to accept.
+//
+// Regression: the unknown-account rewrite ran after the self-transfer check,
+// so a transfer whose source account was absent from the snapshot and whose
+// destination was the seed cash account got rewritten into cash -> cash — the
+// exact shape the check exists to reject, waved through because the check had
+// already run. Balances then credited it without ever debiting it.
+func TestSnapshotBatchCannotManufactureASelfTransfer(t *testing.T) {
+	s := Snapshot{
+		Schema: SnapshotSchema,
+		// Deliberately NO accounts array, so `known` holds only the default.
+		Transactions: []model.Transaction{{
+			ID: "ghost-source", Kind: model.KindTransfer, AmountMinor: 5000,
+			AccountID:   "a1c7e2f0-0999-4a00-9000-000000000999", // unknown
+			ToAccountID: store.DefaultAccountID,
+			OccurredAt:  "2026-08-20T10:00:00Z", Source: model.SourceApp,
+			UpdatedAtMs: 1787000000000,
+		}},
+	}
+
+	batch, skipped := s.Batch()
+	for _, tx := range batch.Transactions {
+		if tx.AccountID == tx.ToAccountID {
+			t.Fatalf("sanitizer produced a self-transfer: %+v", tx)
+		}
+	}
+	if len(batch.Transactions) != 0 {
+		t.Fatalf("kept %d transactions, want 0", len(batch.Transactions))
+	}
+	if len(skipped) == 0 {
+		t.Fatal("the row was dropped without a word")
+	}
+}
+
+// A transfer carrying a stray category_id keeps its row but loses the
+// category: it is still a real movement of money, but it must not reach a
+// category total — which is what the bot echoes after every entry.
+func TestSnapshotBatchClearsCategoryOnTransfers(t *testing.T) {
+	const savings = "a1c7e2f0-0003-4a00-9000-000000000003"
+	s := Snapshot{
+		Schema: SnapshotSchema,
+		Accounts: []model.Account{{
+			ID: savings, Name: "Savings", Kind: model.AccountSavings,
+			Emoji: "🏦", Color: "#E8C95A", UpdatedAtMs: 1755000000000,
+		}},
+		Transactions: []model.Transaction{{
+			ID: "stray-category", Kind: model.KindTransfer, AmountMinor: 5000,
+			CategoryID:  "c1a7e2f0-0001-4a00-9000-000000000001",
+			AccountID:   store.DefaultAccountID,
+			ToAccountID: savings,
+			OccurredAt:  "2026-08-20T10:00:00Z", Source: model.SourceApp,
+			UpdatedAtMs: 1787000000000,
+		}},
+	}
+
+	batch, _ := s.Batch()
+	if len(batch.Transactions) != 1 {
+		t.Fatalf("kept %d transactions, want 1", len(batch.Transactions))
+	}
+	if got := batch.Transactions[0].CategoryID; got != "" {
+		t.Errorf("category_id = %q on a transfer, want it cleared", got)
+	}
+}
+
+// One bad account row must not cost the peer its currency and language.
+//
+// Regression: an unknown default_account_id skipped the whole settings row,
+// so a single malformed account elsewhere in the file could strand the bot
+// answering in the wrong language.
+func TestSnapshotBatchKeepsSettingsWhenDefaultAccountIsUnknown(t *testing.T) {
+	s := Snapshot{
+		Schema: SnapshotSchema,
+		Settings: model.Settings{
+			ID: model.SettingsID, Currency: "RUB", Language: "ru",
+			DefaultAccountID: "a1c7e2f0-0999-4a00-9000-000000000999",
+			UpdatedAtMs:      1787000000000,
+		},
+	}
+
+	batch, skipped := s.Batch()
+	if len(batch.Settings) != 1 {
+		t.Fatalf("settings dropped over an unknown default account: %v", skipped)
+	}
+	got := batch.Settings[0]
+	if got.Currency != "RUB" || got.Language != "ru" {
+		t.Errorf("settings mangled: %+v", got)
+	}
+	// Cleared, not invented: empty means "unchanged" to the store, so the
+	// account the owner actually picked locally survives the merge.
+	if got.DefaultAccountID != "" {
+		t.Errorf("default_account_id = %q, want it cleared", got.DefaultAccountID)
+	}
+}

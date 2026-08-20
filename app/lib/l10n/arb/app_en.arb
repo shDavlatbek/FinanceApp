@@ -1,11 +1,9 @@
 {
   "@@locale": "en",
-
   "appTitle": "Tally",
   "@appTitle": {
     "description": "Application name. Brand — keep identical in every locale."
   },
-
   "navHome": "Home",
   "@navHome": {
     "description": "Bottom navigation label for the Home tab"
@@ -22,7 +20,6 @@
   "@navSettings": {
     "description": "Bottom navigation label for the Settings tab"
   },
-
   "commonIncome": "Income",
   "@commonIncome": {
     "description": "Label for money coming in — chips, legends, filters"
@@ -81,7 +78,6 @@
       }
     }
   },
-
   "homeNetThisMonth": "NET THIS MONTH",
   "@homeNetThisMonth": {
     "description": "Uppercase caption above the hero number when the current month is shown"
@@ -128,7 +124,6 @@
   "@homeNoEntriesMessage": {
     "description": "Body of the empty Recent list"
   },
-
   "historyTitle": "History",
   "@historyTitle": {
     "description": "Screen title of the History tab"
@@ -171,7 +166,6 @@
       }
     }
   },
-
   "statsTitle": "Stats",
   "@statsTitle": {
     "description": "Screen title of the Stats tab"
@@ -226,7 +220,6 @@
       }
     }
   },
-
   "categoriesTitle": "Categories",
   "@categoriesTitle": {
     "description": "Screen title of the Categories screen"
@@ -281,7 +274,6 @@
       }
     }
   },
-
   "entryNewTitle": "New entry",
   "@entryNewTitle": {
     "description": "Title of the transaction sheet when adding"
@@ -316,7 +308,6 @@
       }
     }
   },
-
   "transactionUncategorized": "Uncategorized",
   "@transactionUncategorized": {
     "description": "Fallback name when a transaction references a missing category"
@@ -325,7 +316,6 @@
   "@sourceTelegram": {
     "description": "Badge on transactions logged through the Telegram bot. Brand — keep identical."
   },
-
   "settingsTitle": "Settings",
   "@settingsTitle": {
     "description": "Screen title of the Settings tab"
@@ -388,7 +378,6 @@
   "@settingsAboutBody": {
     "description": "One-paragraph description of the app in the About card"
   },
-
   "syncIndicatorSyncing": "Syncing",
   "@syncIndicatorSyncing": {
     "description": "Compact chip in the Home header while a sync pass runs"
@@ -489,7 +478,6 @@
   "@syncFailedSnack": {
     "description": "Snackbar after a failed manual sync"
   },
-
   "driveStandaloneNotice": "Standalone mode — everything works offline on this device. Connect Google Drive to sync with the Telegram bot; your data stays in your own Drive as readable JSON.",
   "@driveStandaloneNotice": {
     "description": "Notice box shown while no Google account is connected"
@@ -596,7 +584,6 @@
   "@authErrorNetwork": {
     "description": "Device-flow failure: the device is offline"
   },
-
   "seedCategoryGroceries": "Groceries",
   "@seedCategoryGroceries": {
     "description": "Seed category. Shown only while the user has not renamed it."
@@ -657,7 +644,6 @@
   "@seedCategoryOtherIncome": {
     "description": "Catch-all seed income category. Shown only while the user has not renamed it."
   },
-
   "currencyUSD": "US Dollar",
   "@currencyUSD": {
     "description": "Currency name in the currency picker"
@@ -769,5 +755,81 @@
   "currencyKZT": "Kazakhstani Tenge",
   "@currencyKZT": {
     "description": "Currency name in the currency picker"
+  },
+  "periodDay": "Day",
+  "@periodDay": {
+    "description": "Segmented toggle: show a single day on Home/Stats."
+  },
+  "periodMonth": "Month",
+  "@periodMonth": {
+    "description": "Segmented toggle: show a whole month on Home/Stats."
+  },
+  "periodSwitchToDay": "Show one day at a time",
+  "@periodSwitchToDay": {
+    "description": "Accessibility label for the day segment of the period toggle."
+  },
+  "periodSwitchToMonth": "Show the whole month",
+  "@periodSwitchToMonth": {
+    "description": "Accessibility label for the month segment of the period toggle."
+  },
+  "homeNetToday": "NET TODAY",
+  "@homeNetToday": {
+    "description": "Home hero caption when the day lens shows today."
+  },
+  "homeNetForDay": "NET · {date}",
+  "@homeNetForDay": {
+    "description": "Home hero caption for a specific day in the day lens.",
+    "placeholders": {
+      "date": {
+        "type": "String",
+        "example": "Tue, Aug 19"
+      }
+    }
+  },
+  "homeNothingSpentDayTitle": "Nothing spent today",
+  "@homeNothingSpentDayTitle": {
+    "description": "Empty state title when a day has no spending."
+  },
+  "homeNothingSpentDayMessage": "A quiet day for your wallet.",
+  "@homeNothingSpentDayMessage": {
+    "description": "Empty state message when a day has no spending."
+  },
+  "homeDayEntriesSection": "Entries",
+  "@homeDayEntriesSection": {
+    "description": "Section header above the day's transactions."
+  },
+  "seedAccountCash": "Cash",
+  "@seedAccountCash": {
+    "description": "Seed account name, shown only while unrenamed."
+  },
+  "seedAccountCard": "Card",
+  "@seedAccountCard": {
+    "description": "Seed account name, shown only while unrenamed."
+  },
+  "seedAccountSavings": "Savings",
+  "@seedAccountSavings": {
+    "description": "Seed account name, shown only while unrenamed."
+  },
+  "seedAccountInvestments": "Investments",
+  "@seedAccountInvestments": {
+    "description": "Seed account name, shown only while unrenamed."
+  },
+  "transactionTransfer": "Transfer",
+  "@transactionTransfer": {
+    "description": "Title of a transfer row in a transaction list."
+  },
+  "transactionTransferRoute": "{from} → {to}",
+  "@transactionTransferRoute": {
+    "description": "Subtitle of a transfer row: the two accounts it moves between.",
+    "placeholders": {
+      "from": {
+        "type": "String",
+        "example": "Cash"
+      },
+      "to": {
+        "type": "String",
+        "example": "Savings"
+      }
+    }
   }
 }

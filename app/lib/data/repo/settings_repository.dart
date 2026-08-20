@@ -60,6 +60,28 @@ class SettingsRepository {
     return _mutate((SettingsRow s) => s.copyWith(language: code));
   }
 
+  // ---- default account ----------------------------------------------------
+
+  /// The account the Telegram bot books its entries to. Synced, because the
+  /// bot must never have to ask which account a message belongs to.
+  Stream<String> watchDefaultAccountId() => watchSettings().map(
+      (SettingsRow? row) => (row?.defaultAccountId.isNotEmpty ?? false)
+          ? row!.defaultAccountId
+          : defaultAccountId);
+
+  Future<String> getDefaultAccountId() async {
+    final SettingsRow? row = await getSettings();
+    return (row?.defaultAccountId.isNotEmpty ?? false)
+        ? row!.defaultAccountId
+        : defaultAccountId;
+  }
+
+  /// Picks the account new bot entries land in. Marks the row dirty so the
+  /// choice reaches the bot on the next sync.
+  Future<void> setDefaultAccountId(String accountId) => _mutate(
+        (SettingsRow s) => s.copyWith(defaultAccountId: accountId),
+      );
+
   // ---- internals ----------------------------------------------------------
 
   /// Read-modify-write so one field never clobbers the other, then bump
@@ -71,7 +93,11 @@ class SettingsRepository {
             id: settingsRowId,
             currency: defaultCurrency,
             language: defaultLanguage,
-            updatedAtMs: seedUpdatedAtMs,
+            defaultAccountId: defaultAccountId,
+            // settingsUnsetMs, not seedUpdatedAtMs: this stand-in exists only
+            // when the seed has not landed, and a placeholder must never win
+            // an LWW race against a real value from the bot.
+            updatedAtMs: settingsUnsetMs,
             dirty: false,
           );
       await _db.into(_db.settings).insertOnConflictUpdate(

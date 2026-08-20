@@ -70,6 +70,9 @@ String formatSignedMinor(
     locale: locale,
   );
   if (kind == Kind.expense) return '−$body';
+  // A transfer is neither a gain nor a loss — it is the same money in a
+  // different pocket — so it never carries a sign.
+  if (kind == Kind.transfer) return body;
   return signed ? '+$body' : body;
 }
 

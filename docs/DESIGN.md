@@ -44,7 +44,9 @@ Bundle fonts as assets (offline app — no runtime fetching). **Manrope** for ev
 
 ## Screen notes
 
-- **Home:** hero block (net this month, income/spent as small caption chips) → horizontal month switcher → category bars (emoji, name, amount, thin animated bar as % of month max) → "Recent" list (5) → FAB `+`
+- **Home:** hero block (net for the period, income/spent as small caption chips) → horizontal period switcher → `Day · Month` lens toggle → category bars (emoji, name, amount, thin animated bar as % of period max) → "Recent" (5) in the month lens, the whole day's entries in the day lens → FAB `+`
+- **Period lens:** a small segmented `Day · Month` pill sits directly under the switcher, quiet enough never to compete with the hero number. Segmented text, not an icon — the same idiom as the entry sheet's income/expense toggle, and an unlabelled icon would fail the anti-goals below. Day mode reads `Today` / `Yesterday` / `Tue, Aug 19`; the trend under the Stats donut becomes 14 days instead of 6 months. The lens is per-device UI state, persisted locally — the bot has no use for it.
+- **Transfers:** never rendered as income or expense. Neutral ink, an unsigned amount (it is the same money in a different pocket), a `🔄` medallion and the two accounts as the subtitle: `Cash → Savings`.
 - **Entry sheet:** full-height modal. Big amount display top (live-formatted), custom numpad (not system keyboard), kind toggle (expense/income) as segmented pill, category grid of emoji chips, optional note field + date chip row (Today / Yesterday / pick)
 - **Stats:** donut with center total, tap slice → highlight + legend row emphasis; 6-month bar trend below
 - **Empty states:** designed, warm, one-line copy + subtle illustration built from emoji/typography (no stock art)

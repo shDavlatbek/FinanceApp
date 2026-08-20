@@ -6,7 +6,7 @@ import 'tables.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Transactions, Categories, Settings, Meta])
+@DriftDatabase(tables: [Transactions, Categories, Accounts, Settings, Meta])
 class AppDatabase extends _$AppDatabase {
   /// Test-friendly constructor: inject any [QueryExecutor]
   /// (e.g. `NativeDatabase.memory()`).
@@ -18,8 +18,14 @@ class AppDatabase extends _$AppDatabase {
   /// v2 (2026-08-19): `settings.language` added; the REST sync meta keys
   /// (server_url / api_token / last_seq) are dropped in favour of the Drive
   /// keys. No user data is touched.
+  ///
+  /// v3 (2026-08-20): accounts. New `accounts` table, `transactions.account_id`
+  /// / `to_account_id`, `settings.default_account_id`, and the `transfer`
+  /// transaction kind. Every pre-existing transaction books to the seed cash
+  /// account — exactly what the server's own migration does, so the two peers
+  /// reach the same answer without either having to publish anything.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -51,12 +57,72 @@ class AppDatabase extends _$AppDatabase {
             await update(settings)
                 .write(const SettingsCompanion(dirty: Value(true)));
           }
+          if (from < 3) {
+            await m.createTable(accounts);
+            await m.addColumn(transactions, transactions.accountId);
+            await m.addColumn(transactions, transactions.toAccountId);
+            await m.addColumn(settings, settings.defaultAccountId);
+            await _seedAccounts();
+            // Existing rows predate accounts. The column default already books
+            // them to cash; this makes it explicit and covers any row written
+            // by a build where the default differed. updated_at_ms is NOT
+            // bumped and the rows are NOT marked dirty: gaining an account_id
+            // is not an edit the peers need to hear about, and the server's
+            // migration independently reaches the same answer.
+            await (update(transactions)
+                  ..where((t) => t.accountId.equals('')))
+                .write(const TransactionsCompanion(
+                    accountId: Value(defaultAccountId)));
+            await (update(settings)
+                  ..where((r) => r.defaultAccountId.equals('')))
+                .write(const SettingsCompanion(
+                    defaultAccountId: Value(defaultAccountId)));
+            // Unstick a settings row still carrying the old seed timestamp.
+            // Earlier builds seeded the singleton at seedUpdatedAtMs — the very
+            // value the SERVER used to seed — so under strict LWW ("ties keep
+            // the local row") currency and language could never move in either
+            // direction. Only the untouched placeholder matches: any real edit,
+            // on either peer, carries a wall-clock timestamp. The server ships
+            // the mirror image of this migration.
+            await (update(settings)
+                  ..where((r) => r.updatedAtMs.equals(seedUpdatedAtMs)))
+                .write(const SettingsCompanion(
+                    updatedAtMs: Value(settingsUnsetMs)));
+          }
         },
       );
 
-  /// Seeds the FIXED contract categories and the settings singleton so a
-  /// standalone app merges cleanly with a server on first sync.
+  /// Seeds the FIXED contract accounts so a standalone app merges cleanly
+  /// with a server on first sync. Split out of [_seed] because the v3
+  /// migration needs it on databases that were seeded before accounts existed.
+  Future<void> _seedAccounts() async {
+    await batch((b) {
+      b.insertAll(
+        accounts,
+        [
+          for (final a in seedAccounts)
+            AccountsCompanion.insert(
+              id: a.id,
+              name: a.name,
+              kind: a.kind,
+              emoji: a.emoji,
+              color: a.color,
+              sortOrder: Value(a.sortOrder),
+              updatedAtMs: seedUpdatedAtMs,
+              dirty: const Value(false),
+            ),
+        ],
+        // insertOrIgnore, so an account the owner archived (tombstoned) is
+        // never resurrected by a later migration re-running this.
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
+
+  /// Seeds the FIXED contract categories and accounts plus the settings
+  /// singleton so a standalone app merges cleanly with a server on first sync.
   Future<void> _seed() async {
+    await _seedAccounts();
     await batch((b) {
       b.insertAll(
         categories,
@@ -81,7 +147,13 @@ class AppDatabase extends _$AppDatabase {
           id: settingsRowId,
           currency: defaultCurrency,
           language: const Value(defaultLanguage),
-          updatedAtMs: seedUpdatedAtMs,
+          defaultAccountId: const Value(defaultAccountId),
+          // settingsUnsetMs (0), NOT seedUpdatedAtMs: see the constant's doc.
+          // A fixed non-zero seed would tie with the server's identical seed
+          // and, under strict LWW, freeze currency and language on both peers
+          // forever — a server on UZS (exponent 0) would keep storing a typed
+          // "250" as 250 minor units while the app rendered it as 2.50 dollars.
+          updatedAtMs: settingsUnsetMs,
           dirty: const Value(false),
         ),
         mode: InsertMode.insertOrIgnore,

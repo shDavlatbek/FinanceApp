@@ -159,6 +159,7 @@ func (s Snapshot) Batch() (store.Batch, []string) {
 	}
 
 	for _, t := range s.Transactions {
+		// Structural checks first — the ones no rewrite below can affect.
 		switch {
 		case t.ID == "":
 			skipped = append(skipped, "transaction with empty id")
@@ -169,20 +170,6 @@ func (s Snapshot) Batch() (store.Batch, []string) {
 		case t.AmountMinor <= 0:
 			skipped = append(skipped, fmt.Sprintf("transaction %s: amount_minor must be > 0, got %d", t.ID, t.AmountMinor))
 			continue
-		case t.Kind != model.KindTransfer && t.CategoryID == "":
-			skipped = append(skipped, "transaction "+t.ID+": empty category_id")
-			continue
-		case t.Kind == model.KindTransfer && t.ToAccountID == "":
-			skipped = append(skipped, "transaction "+t.ID+": transfer without to_account_id")
-			continue
-		case t.Kind == model.KindTransfer && t.ToAccountID == t.AccountID:
-			// A transfer to itself would net to zero but still show up in
-			// history as money moving. It is only ever a hand-edit mistake.
-			skipped = append(skipped, "transaction "+t.ID+": transfer to the same account")
-			continue
-		case t.Kind == model.KindTransfer && !known[t.ToAccountID]:
-			skipped = append(skipped, "transaction "+t.ID+": transfer to unknown account "+t.ToAccountID)
-			continue
 		case t.Source != model.SourceApp && t.Source != model.SourceTelegram:
 			skipped = append(skipped, "transaction "+t.ID+": bad source "+t.Source)
 			continue
@@ -190,29 +177,61 @@ func (s Snapshot) Batch() (store.Batch, []string) {
 			skipped = append(skipped, "transaction "+t.ID+": updated_at_ms must be > 0")
 			continue
 		}
-		ts, err := time.Parse(time.RFC3339, t.OccurredAt)
-		if err != nil {
-			skipped = append(skipped, "transaction "+t.ID+": occurred_at is not RFC3339: "+t.OccurredAt)
-			continue
-		}
-		t.OccurredAt = ts.UTC().Format(model.CanonicalUTC)
+
+		// Resolve the source account BEFORE the transfer rules below.
+		//
 		// A schema-1 peer, or a hand-edit that dropped the field, leaves the
-		// entry account-less. Booking it to the default account matches what
-		// the local migration did to this peer's own pre-accounts rows, so
-		// both sides agree without a round trip.
+		// entry account-less. Booking it to the default account matches what the
+		// local migration did to this peer's own pre-accounts rows, so both sides
+		// agree without a round trip: losing an entry is worse than misfiling one.
+		//
+		// The ORDER is load-bearing. Rewriting after the self-transfer check
+		// would let a transfer with an unknown source and a destination of cash
+		// be rewritten into cash -> cash: precisely the row that check exists to
+		// reject, waved through because the check had already run.
 		if t.AccountID == "" || !known[t.AccountID] {
 			if t.AccountID != "" {
 				skipped = append(skipped, "transaction "+t.ID+": unknown account_id "+t.AccountID+", booked to the default account")
 			}
 			t.AccountID = store.DefaultAccountID
 		}
-		// Only a transfer has a destination. A stray to_account_id elsewhere is
-		// cleared rather than treated as fatal: the balance rule only reads the
-		// field on a transfer, so the row is still perfectly good data, and
-		// dropping a real expense over an ignored field would be the worse bug.
-		if t.Kind != model.KindTransfer {
+
+		if t.Kind == model.KindTransfer {
+			// A transfer never carries a category. Clearing a stray one keeps the
+			// row — it is still a real movement of money — while stopping it from
+			// reaching a category total, which is what the bot echoes after every
+			// single entry.
+			t.CategoryID = ""
+			switch {
+			case t.ToAccountID == "":
+				skipped = append(skipped, "transaction "+t.ID+": transfer without to_account_id")
+				continue
+			case !known[t.ToAccountID]:
+				skipped = append(skipped, "transaction "+t.ID+": transfer to unknown account "+t.ToAccountID)
+				continue
+			case t.ToAccountID == t.AccountID:
+				// Nets to zero, yet still shows in history as money moving.
+				skipped = append(skipped, "transaction "+t.ID+": transfer to the same account")
+				continue
+			}
+		} else {
+			// Only a transfer has a destination. A stray to_account_id elsewhere
+			// is cleared rather than treated as fatal: the balance rule only reads
+			// the field on a transfer, so the row is still perfectly good data,
+			// and dropping a real expense over an ignored field is the worse bug.
 			t.ToAccountID = ""
+			if t.CategoryID == "" {
+				skipped = append(skipped, "transaction "+t.ID+": empty category_id")
+				continue
+			}
 		}
+
+		ts, err := time.Parse(time.RFC3339, t.OccurredAt)
+		if err != nil {
+			skipped = append(skipped, "transaction "+t.ID+": occurred_at is not RFC3339: "+t.OccurredAt)
+			continue
+		}
+		t.OccurredAt = ts.UTC().Format(model.CanonicalUTC)
 		b.Transactions = append(b.Transactions, t)
 	}
 
@@ -224,10 +243,17 @@ func (s Snapshot) Batch() (store.Batch, []string) {
 		skipped = append(skipped, "settings: bad currency "+st.Currency)
 	case !model.ValidLanguage(st.Language):
 		skipped = append(skipped, "settings: bad language "+st.Language)
-	case st.DefaultAccountID != "" && !known[st.DefaultAccountID]:
-		skipped = append(skipped, "settings: unknown default_account_id "+st.DefaultAccountID)
 	default:
 		st.ID = model.SettingsID
+		// An unknown default account is CLEARED, not a reason to drop the row.
+		// Empty already means "unchanged" downstream, so the local choice
+		// survives — whereas skipping would throw away this peer's currency and
+		// language too, stranding the bot in the wrong language over an
+		// unrelated bad account row.
+		if st.DefaultAccountID != "" && !known[st.DefaultAccountID] {
+			skipped = append(skipped, "settings: unknown default_account_id "+st.DefaultAccountID+", left unchanged")
+			st.DefaultAccountID = ""
+		}
 		b.Settings = append(b.Settings, st)
 	}
 

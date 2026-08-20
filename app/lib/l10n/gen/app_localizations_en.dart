@@ -563,4 +563,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get currencyKZT => 'Kazakhstani Tenge';
+
+  @override
+  String get periodDay => 'Day';
+
+  @override
+  String get periodMonth => 'Month';
+
+  @override
+  String get periodSwitchToDay => 'Show one day at a time';
+
+  @override
+  String get periodSwitchToMonth => 'Show the whole month';
+
+  @override
+  String get homeNetToday => 'NET TODAY';
+
+  @override
+  String homeNetForDay({required String date}) {
+    return 'NET · $date';
+  }
+
+  @override
+  String get homeNothingSpentDayTitle => 'Nothing spent today';
+
+  @override
+  String get homeNothingSpentDayMessage => 'A quiet day for your wallet.';
+
+  @override
+  String get homeDayEntriesSection => 'Entries';
+
+  @override
+  String get seedAccountCash => 'Cash';
+
+  @override
+  String get seedAccountCard => 'Card';
+
+  @override
+  String get seedAccountSavings => 'Savings';
+
+  @override
+  String get seedAccountInvestments => 'Investments';
+
+  @override
+  String get transactionTransfer => 'Transfer';
+
+  @override
+  String transactionTransferRoute({required String from, required String to}) {
+    return '$from → $to';
+  }
 }
