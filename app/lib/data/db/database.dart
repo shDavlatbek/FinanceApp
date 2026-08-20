@@ -25,7 +25,7 @@ class AppDatabase extends _$AppDatabase {
   /// account — exactly what the server's own migration does, so the two peers
   /// reach the same answer without either having to publish anything.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -88,6 +88,11 @@ class AppDatabase extends _$AppDatabase {
                   ..where((r) => r.updatedAtMs.equals(seedUpdatedAtMs)))
                 .write(const SettingsCompanion(
                     updatedAtMs: Value(settingsUnsetMs)));
+          }
+          if (from < 4) {
+            // Manual ordering. Everything existing keeps 0, which is exactly
+            // "never placed by hand" — so nothing visibly reorders on upgrade.
+            await m.addColumn(transactions, transactions.sortOrder);
           }
         },
       );

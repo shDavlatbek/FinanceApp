@@ -612,4 +612,73 @@ class AppLocalizationsEn extends AppLocalizations {
   String transactionTransferRoute({required String from, required String to}) {
     return '$from → $to';
   }
+
+  @override
+  String get periodRange => 'Range';
+
+  @override
+  String get periodSwitchToRange => 'Show a custom date range';
+
+  @override
+  String get periodPickDateHint => 'Change the period shown';
+
+  @override
+  String get periodPickMonthTitle => 'Pick a month';
+
+  @override
+  String get periodPickRangeTitle => 'Pick a date range';
+
+  @override
+  String get periodRangeFrom => 'From';
+
+  @override
+  String get periodRangeTo => 'To';
+
+  @override
+  String get periodApplyRange => 'Apply range';
+
+  @override
+  String periodRangeDays({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days',
+      one: '$count day',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get periodPresetLast7 => 'Last 7 days';
+
+  @override
+  String get periodPresetLast30 => 'Last 30 days';
+
+  @override
+  String get periodPresetThisMonth => 'This month';
+
+  @override
+  String get periodPresetLastMonth => 'Last month';
+
+  @override
+  String get periodPresetThisYear => 'This year';
+
+  @override
+  String get statsRangeTrendTitle => 'Across the range';
+
+  @override
+  String homeNetForRange({required String range}) {
+    return 'NET FOR $range';
+  }
+
+  @override
+  String statsLastDays({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Last $count days',
+      one: 'Last day',
+    );
+    return '$_temp0';
+  }
 }

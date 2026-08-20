@@ -14,7 +14,7 @@ import (
 // SnapshotSchema is the version stamped into every snapshot file written by
 // this build. Schema 2 added accounts, per-transaction account ids and the
 // 'transfer' kind.
-const SnapshotSchema = 2
+const SnapshotSchema = 3
 
 // MinReadableSchema is the oldest snapshot this build still understands. A
 // schema-1 file predates accounts: it carries no `accounts` array and its
@@ -232,6 +232,13 @@ func (s Snapshot) Batch() (store.Batch, []string) {
 			continue
 		}
 		t.OccurredAt = ts.UTC().Format(model.CanonicalUTC)
+
+		// A negative placement would sort ahead of the "never placed by hand"
+		// rows and quietly invert a day. Clamp rather than skip: the row is
+		// real money, and the ordering is only a display preference.
+		if t.SortOrder < 0 {
+			t.SortOrder = 0
+		}
 		b.Transactions = append(b.Transactions, t)
 	}
 

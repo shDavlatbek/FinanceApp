@@ -154,7 +154,7 @@ func TestSnapshotWireShape(t *testing.T) {
 }
 
 func TestParseSnapshotRejectsForeignSchema(t *testing.T) {
-	if _, err := ParseSnapshot([]byte(`{"schema":3,"device_id":"x"}`)); err == nil {
+	if _, err := ParseSnapshot([]byte(`{"schema":4,"device_id":"x"}`)); err == nil {
 		t.Fatal("a schema from the future was accepted")
 	}
 	if _, err := ParseSnapshot([]byte(`{"schema":0,"device_id":"x"}`)); err == nil {

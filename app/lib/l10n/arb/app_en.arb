@@ -831,5 +831,89 @@
         "example": "Savings"
       }
     }
+  },
+  "periodRange": "Range",
+  "@periodRange": {
+    "description": "Segmented toggle: show a custom from-to date range on Home/Stats."
+  },
+  "periodSwitchToRange": "Show a custom date range",
+  "@periodSwitchToRange": {
+    "description": "Accessibility label for the range segment of the period toggle."
+  },
+  "periodPickDateHint": "Change the period shown",
+  "@periodPickDateHint": {
+    "description": "Accessibility label for the tappable period label that opens a picker."
+  },
+  "periodPickMonthTitle": "Pick a month",
+  "@periodPickMonthTitle": {
+    "description": "Title of the month-picker sheet."
+  },
+  "periodPickRangeTitle": "Pick a date range",
+  "@periodPickRangeTitle": {
+    "description": "Title of the date-range picker sheet."
+  },
+  "periodRangeFrom": "From",
+  "@periodRangeFrom": {
+    "description": "Caption of the range start field."
+  },
+  "periodRangeTo": "To",
+  "@periodRangeTo": {
+    "description": "Caption of the range end field."
+  },
+  "periodApplyRange": "Apply range",
+  "@periodApplyRange": {
+    "description": "Confirms the chosen date range."
+  },
+  "periodRangeDays": "{count, plural, one{{count} day} other{{count} days}}",
+  "@periodRangeDays": {
+    "description": "How many days the chosen range covers.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "periodPresetLast7": "Last 7 days",
+  "@periodPresetLast7": {
+    "description": "Range preset: the last seven days."
+  },
+  "periodPresetLast30": "Last 30 days",
+  "@periodPresetLast30": {
+    "description": "Range preset: the last thirty days."
+  },
+  "periodPresetThisMonth": "This month",
+  "@periodPresetThisMonth": {
+    "description": "Range preset: the current month so far."
+  },
+  "periodPresetLastMonth": "Last month",
+  "@periodPresetLastMonth": {
+    "description": "Range preset: the whole previous month."
+  },
+  "periodPresetThisYear": "This year",
+  "@periodPresetThisYear": {
+    "description": "Range preset: the current year so far."
+  },
+  "statsRangeTrendTitle": "Across the range",
+  "@statsRangeTrendTitle": {
+    "description": "Heading of the trend chart in the range lens."
+  },
+  "homeNetForRange": "NET FOR {range}",
+  "@homeNetForRange": {
+    "description": "Home hero caption in the range lens.",
+    "placeholders": {
+      "range": {
+        "type": "String",
+        "example": "1 - 20 Aug"
+      }
+    }
+  },
+  "statsLastDays": "{count, plural, one{Last day} other{Last {count} days}}",
+  "@statsLastDays": {
+    "description": "Heading of the trend chart in the day lens.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

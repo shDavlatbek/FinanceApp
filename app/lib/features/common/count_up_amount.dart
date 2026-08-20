@@ -4,9 +4,12 @@ library;
 import 'package:flutter/material.dart';
 
 import '../../core/theme.dart';
+import 'adaptive_amount.dart';
 
 /// Animates between values whenever [minor] changes; formats every frame via
-/// [format] so grouping/symbol stay live. Always tabular figures.
+/// [format] so grouping/symbol stay live. Always tabular figures, and always
+/// shrink-to-fit: hero numbers are the widest text in the app and a
+/// high-denomination currency would otherwise run off the screen.
 class CountUpAmount extends StatelessWidget {
   const CountUpAmount({
     super.key,
@@ -14,6 +17,7 @@ class CountUpAmount extends StatelessWidget {
     required this.format,
     required this.style,
     this.duration = const Duration(milliseconds: 450),
+    this.minScale = 0.45,
   });
 
   final int minor;
@@ -21,16 +25,20 @@ class CountUpAmount extends StatelessWidget {
   final TextStyle style;
   final Duration duration;
 
+  /// Shrink floor, as a fraction of [style]'s font size.
+  final double minScale;
+
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0, end: minor.toDouble()),
       duration: duration,
       curve: Curves.easeOutCubic,
-      builder: (context, value, _) => Text(
+      builder: (context, value, _) => AdaptiveAmount(
         format(value.round()),
-        maxLines: 1,
         style: money(style),
+        minScale: minScale,
+        textAlign: TextAlign.center,
       ),
     );
   }

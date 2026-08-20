@@ -250,6 +250,7 @@ CREATE TABLE IF NOT EXISTS transactions (
 	to_account_id TEXT NOT NULL DEFAULT '',
 	note          TEXT NOT NULL DEFAULT '',
 	occurred_at   TEXT NOT NULL,
+	sort_order    INTEGER NOT NULL DEFAULT 0,
 	source        TEXT NOT NULL CHECK (source IN ('app','telegram')),
 	created_at_ms INTEGER NOT NULL,
 	updated_at_ms INTEGER NOT NULL,
@@ -284,6 +285,7 @@ INSERT INTO meta (k, v) VALUES ('last_seq', '0') ON CONFLICT(k) DO NOTHING;
 		{"transactions", "dirty", "ALTER TABLE transactions ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0"},
 		{"settings", "dirty", "ALTER TABLE settings ADD COLUMN dirty INTEGER NOT NULL DEFAULT 0"},
 		{"settings", "default_account_id", "ALTER TABLE settings ADD COLUMN default_account_id TEXT NOT NULL DEFAULT ''"},
+		{"transactions", "sort_order", "ALTER TABLE transactions ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"},
 	} {
 		has, err := s.hasColumn(col.table, col.name)
 		if err != nil {
@@ -357,6 +359,7 @@ CREATE TABLE transactions (
 	to_account_id TEXT NOT NULL DEFAULT '',
 	note          TEXT NOT NULL DEFAULT '',
 	occurred_at   TEXT NOT NULL,
+	sort_order    INTEGER NOT NULL DEFAULT 0,
 	source        TEXT NOT NULL CHECK (source IN ('app','telegram')),
 	created_at_ms INTEGER NOT NULL,
 	updated_at_ms INTEGER NOT NULL,
@@ -368,10 +371,10 @@ CREATE TABLE transactions (
 	}
 	if _, err := tx.Exec(`
 INSERT INTO transactions (id, kind, amount_minor, category_id, account_id, to_account_id,
-                          note, occurred_at, source, created_at_ms, updated_at_ms,
+                          note, occurred_at, sort_order, source, created_at_ms, updated_at_ms,
                           deleted_at_ms, server_seq, dirty)
 SELECT id, kind, amount_minor, category_id, ?, '',
-       note, occurred_at, source, created_at_ms, updated_at_ms,
+       note, occurred_at, 0, source, created_at_ms, updated_at_ms,
        deleted_at_ms, server_seq, dirty
 FROM transactions_old`, DefaultAccountID); err != nil {
 		return fmt.Errorf("rebuild transactions: copy: %w", err)
@@ -670,7 +673,7 @@ func (s *Store) FullState() (Snapshot, error) {
 	}
 
 	trows, err := tx.Query(
-		`SELECT id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms
+		`SELECT id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, sort_order, source, created_at_ms, updated_at_ms, deleted_at_ms
 		 FROM transactions ORDER BY occurred_at, id`)
 	if err != nil {
 		return snap, err
@@ -679,7 +682,7 @@ func (s *Store) FullState() (Snapshot, error) {
 		var t model.Transaction
 		var del sql.NullInt64
 		if err := trows.Scan(&t.ID, &t.Kind, &t.AmountMinor, &t.CategoryID, &t.AccountID, &t.ToAccountID,
-			&t.Note, &t.OccurredAt, &t.Source, &t.CreatedAtMs, &t.UpdatedAtMs, &del); err != nil {
+			&t.Note, &t.OccurredAt, &t.SortOrder, &t.Source, &t.CreatedAtMs, &t.UpdatedAtMs, &del); err != nil {
 			trows.Close()
 			return snap, err
 		}
@@ -836,14 +839,14 @@ func applyTransaction(tx *sql.Tx, t model.Transaction, dirty bool) (int, error) 
 	d := dirtyInt(dirty)
 	if insert {
 		_, err = tx.Exec(
-			`INSERT INTO transactions (id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms, server_seq, dirty)
-			 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-			t.ID, t.Kind, t.AmountMinor, t.CategoryID, t.AccountID, t.ToAccountID, t.Note, t.OccurredAt, t.Source, t.CreatedAtMs, t.UpdatedAtMs, t.DeletedAtMs, seq, d)
+			`INSERT INTO transactions (id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, sort_order, source, created_at_ms, updated_at_ms, deleted_at_ms, server_seq, dirty)
+			 VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			t.ID, t.Kind, t.AmountMinor, t.CategoryID, t.AccountID, t.ToAccountID, t.Note, t.OccurredAt, t.SortOrder, t.Source, t.CreatedAtMs, t.UpdatedAtMs, t.DeletedAtMs, seq, d)
 	} else {
 		_, err = tx.Exec(
-			`UPDATE transactions SET kind=?, amount_minor=?, category_id=?, account_id=?, to_account_id=?, note=?, occurred_at=?, source=?, created_at_ms=?, updated_at_ms=?, deleted_at_ms=?, server_seq=?, dirty=?
+			`UPDATE transactions SET kind=?, amount_minor=?, category_id=?, account_id=?, to_account_id=?, note=?, occurred_at=?, sort_order=?, source=?, created_at_ms=?, updated_at_ms=?, deleted_at_ms=?, server_seq=?, dirty=?
 			 WHERE id=?`,
-			t.Kind, t.AmountMinor, t.CategoryID, t.AccountID, t.ToAccountID, t.Note, t.OccurredAt, t.Source, t.CreatedAtMs, t.UpdatedAtMs, t.DeletedAtMs, seq, d, t.ID)
+			t.Kind, t.AmountMinor, t.CategoryID, t.AccountID, t.ToAccountID, t.Note, t.OccurredAt, t.SortOrder, t.Source, t.CreatedAtMs, t.UpdatedAtMs, t.DeletedAtMs, seq, d, t.ID)
 	}
 	if err != nil {
 		return 0, err
@@ -1194,10 +1197,10 @@ func (s *Store) LastTransaction() (model.Transaction, error) {
 	var t model.Transaction
 	var del sql.NullInt64
 	err := s.db.QueryRow(
-		`SELECT id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, source, created_at_ms, updated_at_ms, deleted_at_ms
+		`SELECT id, kind, amount_minor, category_id, account_id, to_account_id, note, occurred_at, sort_order, source, created_at_ms, updated_at_ms, deleted_at_ms
 		 FROM transactions WHERE deleted_at_ms IS NULL AND kind <> 'transfer'
 		 ORDER BY created_at_ms DESC, server_seq DESC LIMIT 1`).
-		Scan(&t.ID, &t.Kind, &t.AmountMinor, &t.CategoryID, &t.AccountID, &t.ToAccountID, &t.Note, &t.OccurredAt, &t.Source, &t.CreatedAtMs, &t.UpdatedAtMs, &del)
+		Scan(&t.ID, &t.Kind, &t.AmountMinor, &t.CategoryID, &t.AccountID, &t.ToAccountID, &t.Note, &t.OccurredAt, &t.SortOrder, &t.Source, &t.CreatedAtMs, &t.UpdatedAtMs, &del)
 	if errors.Is(err, sql.ErrNoRows) {
 		return t, ErrNotFound
 	}

@@ -38,8 +38,8 @@ func TestInteropFixtureParses(t *testing.T) {
 		t.Fatalf("ParseSnapshot: %v", err)
 	}
 
-	if snap.Schema != 2 {
-		t.Errorf("schema = %d, want 2", snap.Schema)
+	if snap.Schema != 3 {
+		t.Errorf("schema = %d, want 3", snap.Schema)
 	}
 	if snap.DeviceID != "11111111-2222-4333-8444-555555555555" {
 		t.Errorf("device_id = %q", snap.DeviceID)
@@ -129,7 +129,7 @@ func TestInteropFixtureParses(t *testing.T) {
 	if shop.Kind != "expense" || shop.AmountMinor != 24850 ||
 		shop.CategoryID != "c1a7e2f0-0001-4a00-9000-000000000001" ||
 		shop.AccountID != "a1c7e2f0-0002-4a00-9000-000000000002" || shop.ToAccountID != "" ||
-		shop.Note != "weekly shop" || shop.OccurredAt != "2026-08-18T09:30:00Z" ||
+		shop.Note != "weekly shop" || shop.OccurredAt != "2026-08-19T09:30:00Z" ||
 		shop.Source != "app" || shop.CreatedAtMs != 1787000000000 ||
 		shop.UpdatedAtMs != 1787000000000 || shop.DeletedAtMs != nil {
 		t.Errorf("transaction decoded wrong: %+v", shop)
@@ -142,6 +142,24 @@ func TestInteropFixtureParses(t *testing.T) {
 	if got := snap.Transactions[txs["aaaaaaaa-0000-4000-8000-000000000003"]]; got.Kind != "income" ||
 		got.Note != "августовская зарплата · oylik maosh" {
 		t.Errorf("income transaction decoded wrong: %+v", got)
+	}
+
+	// Manual placement inside a day. The two hand-placed rows share a day and
+	// the EARLIER one is placed first, so a peer that ignored sort_order and
+	// sorted by time alone would show them the other way round.
+	placedFirst := snap.Transactions[txs["aaaaaaaa-0000-4000-8000-000000000002"]]
+	placedSecond := snap.Transactions[txs["aaaaaaaa-0000-4000-8000-000000000001"]]
+	if placedFirst.SortOrder != 1 || placedSecond.SortOrder != 2 {
+		t.Errorf("sort_order = %d/%d, want 1/2",
+			placedFirst.SortOrder, placedSecond.SortOrder)
+	}
+	if placedFirst.OccurredAt >= placedSecond.OccurredAt {
+		t.Errorf("the fixture no longer places the earlier row first: %s vs %s",
+			placedFirst.OccurredAt, placedSecond.OccurredAt)
+	}
+	// Everything untouched by hand must decode as 0, not as some implicit index.
+	if got := snap.Transactions[txs["aaaaaaaa-0000-4000-8000-000000000003"]].SortOrder; got != 0 {
+		t.Errorf("unplaced row sort_order = %d, want 0", got)
 	}
 
 	// 2^53 + 1: if this ever went through a float64 it would come back as
@@ -211,6 +229,10 @@ func TestInteropFixtureRoundTrips(t *testing.T) {
 		got := round.Transactions[i]
 		if got.AccountID != want.AccountID || got.ToAccountID != want.ToAccountID {
 			t.Errorf("transaction %s changed accounts: %+v -> %+v", want.ID, want, got)
+		}
+		if got.SortOrder != want.SortOrder {
+			t.Errorf("transaction %s: sort_order %d -> %d",
+				want.ID, want.SortOrder, got.SortOrder)
 		}
 		if got.AmountMinor != want.AmountMinor || got.OccurredAt != want.OccurredAt {
 			t.Errorf("transaction %s changed: %+v -> %+v", want.ID, want, got)

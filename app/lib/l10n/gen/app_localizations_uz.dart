@@ -613,4 +613,73 @@ class AppLocalizationsUz extends AppLocalizations {
   String transactionTransferRoute({required String from, required String to}) {
     return '$from → $to';
   }
+
+  @override
+  String get periodRange => 'Oraliq';
+
+  @override
+  String get periodSwitchToRange => 'Ixtiyoriy sana oraligʻini koʻrsatish';
+
+  @override
+  String get periodPickDateHint => 'Koʻrsatilayotgan davrni oʻzgartirish';
+
+  @override
+  String get periodPickMonthTitle => 'Oyni tanlang';
+
+  @override
+  String get periodPickRangeTitle => 'Sana oraligʻini tanlang';
+
+  @override
+  String get periodRangeFrom => 'Dan';
+
+  @override
+  String get periodRangeTo => 'Gacha';
+
+  @override
+  String get periodApplyRange => 'Qoʻllash';
+
+  @override
+  String periodRangeDays({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count kun',
+      one: '$count kun',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get periodPresetLast7 => '7 kun';
+
+  @override
+  String get periodPresetLast30 => '30 kun';
+
+  @override
+  String get periodPresetThisMonth => 'Shu oy';
+
+  @override
+  String get periodPresetLastMonth => 'Oʻtgan oy';
+
+  @override
+  String get periodPresetThisYear => 'Shu yil';
+
+  @override
+  String get statsRangeTrendTitle => 'Oraliq boʻyicha';
+
+  @override
+  String homeNetForRange({required String range}) {
+    return '$range SOF QOLDIQ';
+  }
+
+  @override
+  String statsLastDays({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Soʻnggi $count kun',
+      one: 'Soʻnggi kun',
+    );
+    return '$_temp0';
+  }
 }

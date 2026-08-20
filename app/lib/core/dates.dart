@@ -62,6 +62,11 @@ String dayLabel(DateTime day, {String? locale}) =>
 String shortMonthLabel(DateTime month, {String? locale}) =>
     DateFormat.MMM(locale).format(month);
 
+/// Short month + year, e.g. `Aug 2026` — the period bar, which shares its row
+/// with the lens toggle and has no space for the month spelled out.
+String shortMonthYearLabel(DateTime month, {String? locale}) =>
+    DateFormat.yMMM(locale).format(month);
+
 /// Short day + month, e.g. `Aug 19` — the entry sheet's custom-date chip.
 String dayMonthLabel(DateTime day, {String? locale}) =>
     DateFormat.MMMd(locale).format(day);
@@ -102,6 +107,54 @@ String occurredAtQueryBound(DateTime localInstant) {
       start: occurredAtQueryBound(monthStart(month)),
       end: occurredAtQueryBound(nextMonthStart(month)),
     );
+
+/// `(startBound, endBound)` SQL bounds covering the inclusive local day range
+/// [from]..[to] — the range-lens counterpart of [monthQueryBounds]. The end
+/// bound is the midnight *after* [to], so the last day is fully included.
+({String start, String end}) rangeQueryBounds(DateTime from, DateTime to) => (
+      start: occurredAtQueryBound(dayStart(from)),
+      end: occurredAtQueryBound(nextDayStart(to)),
+    );
+
+/// Number of whole days in the inclusive range [from]..[to] (1 when they are
+/// the same day).
+///
+/// Compares UTC-normalized midnights on purpose: `DateTime.difference` measures
+/// absolute elapsed time, so a local 23-hour DST day would otherwise report a
+/// one-day gap as zero.
+int daysInRange(DateTime from, DateTime to) =>
+    DateTime.utc(to.year, to.month, to.day)
+        .difference(DateTime.utc(from.year, from.month, from.day))
+        .inDays +
+    1;
+
+/// Clamps a range so `from` never sits after `to`, swapping them if it does.
+({DateTime from, DateTime to}) normalizeRange(DateTime from, DateTime to) {
+  final a = dayStart(from);
+  final b = dayStart(to);
+  return a.isAfter(b) ? (from: b, to: a) : (from: a, to: b);
+}
+
+/// Label for a day range: `Aug 19` for a single day, `1 – Aug 20` when both
+/// ends share a month, `Aug 28 – Sep 3` otherwise.
+///
+/// The default is deliberately terse because the period pill shares one row
+/// with the lens toggle. Pass [compact] false where there is room for both
+/// ends in full, such as the hero caption.
+String rangeLabel(
+  DateTime from,
+  DateTime to, {
+  String? locale,
+  bool compact = true,
+}) {
+  final r = normalizeRange(from, to);
+  if (isSameDay(r.from, r.to)) return dayMonthLabel(r.from, locale: locale);
+  if (compact && r.from.year == r.to.year && r.from.month == r.to.month) {
+    return '${r.from.day} – ${dayMonthLabel(r.to, locale: locale)}';
+  }
+  return '${dayMonthLabel(r.from, locale: locale)} – '
+      '${dayMonthLabel(r.to, locale: locale)}';
+}
 
 /// `(startBound, endBound)` SQL bounds covering the local calendar day of
 /// [day] — the day-lens counterpart of [monthQueryBounds].

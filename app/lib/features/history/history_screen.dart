@@ -12,7 +12,6 @@ import '../../core/dates.dart';
 import '../../core/money.dart';
 import '../../core/theme.dart';
 import '../../l10n/l10n.dart';
-import '../common/animated_item_list.dart';
 import '../common/cards.dart';
 import '../common/empty_state.dart';
 import '../common/format.dart';
@@ -112,6 +111,27 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           ),
         ),
       );
+  }
+
+  /// Places a dragged entry and persists the whole day's new order.
+  ///
+  /// Reordering is per-day: the ids handed to the repository are exactly the
+  /// rows of one local day, numbered 1..N in the order shown.
+  Future<void> _reorder(
+    List<Transaction> dayTxs,
+    int oldIndex,
+    int newIndex,
+  ) async {
+    // onReorderItem (unlike the deprecated onReorder) already accounts for the
+    // dragged row being lifted out, so newIndex needs no adjustment here.
+    if (newIndex == oldIndex) return;
+
+    final List<Transaction> next = <Transaction>[...dayTxs];
+    next.insert(newIndex, next.removeAt(oldIndex));
+    HapticFeedback.selectionClick();
+    await ref
+        .read(transactionsRepoProvider)
+        .reorderDay(<String>[for (final Transaction t in next) t.id]);
   }
 
   @override
@@ -220,6 +240,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                           currency: currency,
                           dismissed: _dismissed,
                           onDelete: _delete,
+                          onReorder: _reorder,
                         );
                       },
                     ),
@@ -241,6 +262,7 @@ class _DayGroup extends StatelessWidget {
     required this.currency,
     required this.dismissed,
     required this.onDelete,
+    required this.onReorder,
   });
 
   final String dayKeyStr;
@@ -248,6 +270,7 @@ class _DayGroup extends StatelessWidget {
   final String currency;
   final Set<Object> dismissed;
   final Future<void> Function(Transaction) onDelete;
+  final Future<void> Function(List<Transaction>, int, int) onReorder;
 
   String _title(BuildContext context) {
     final now = DateTime.now();
@@ -294,21 +317,53 @@ class _DayGroup extends StatelessWidget {
               ],
             ),
           ),
-          AnimatedItemList<Transaction>(
-            items: txs,
+          // Long-press to drag, swipe to delete. ReorderableListView replaces
+          // AnimatedItemList here — it cannot animate inserts, but placing an
+          // entry by hand is what this screen is for, and Dismissible still
+          // animates its own dismissal.
+          ReorderableListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            keyOf: (tx) => tx.id,
-            skipRemoveAnimation: dismissed,
-            itemBuilder: (context, tx) => Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _SwipeableTile(tx: tx, onDelete: onDelete),
-            ),
+            buildDefaultDragHandles: false,
+            itemCount: txs.length,
+            onReorderItem: (int oldIndex, int newIndex) =>
+                onReorder(txs, oldIndex, newIndex),
+            proxyDecorator: _liftedTile,
+            itemBuilder: (BuildContext context, int i) {
+              final Transaction tx = txs[i];
+              return ReorderableDelayedDragStartListener(
+                key: ValueKey<String>('reorder-${tx.id}'),
+                index: i,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _SwipeableTile(tx: tx, onDelete: onDelete),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
+}
+
+/// The dragged row while it is in the air: lifted slightly, no Material
+/// elevation shadow (DESIGN.md: hairline borders, never drop-shadow soup).
+Widget _liftedTile(Widget child, int index, Animation<double> animation) {
+  return AnimatedBuilder(
+    animation: animation,
+    builder: (BuildContext context, Widget? inner) {
+      final double lift = Curves.easeOutCubic.transform(animation.value);
+      return Transform.scale(
+        scale: 1 + 0.03 * lift,
+        child: Material(
+          color: Colors.transparent,
+          child: Opacity(opacity: 1 - 0.12 * lift, child: inner),
+        ),
+      );
+    },
+    child: child,
+  );
 }
 
 class _SwipeableTile extends StatelessWidget {

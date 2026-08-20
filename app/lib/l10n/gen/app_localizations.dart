@@ -1167,6 +1167,108 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{from} → {to}'**
   String transactionTransferRoute({required String from, required String to});
+
+  /// Segmented toggle: show a custom from-to date range on Home/Stats.
+  ///
+  /// In en, this message translates to:
+  /// **'Range'**
+  String get periodRange;
+
+  /// Accessibility label for the range segment of the period toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show a custom date range'**
+  String get periodSwitchToRange;
+
+  /// Accessibility label for the tappable period label that opens a picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the period shown'**
+  String get periodPickDateHint;
+
+  /// Title of the month-picker sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a month'**
+  String get periodPickMonthTitle;
+
+  /// Title of the date-range picker sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a date range'**
+  String get periodPickRangeTitle;
+
+  /// Caption of the range start field.
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get periodRangeFrom;
+
+  /// Caption of the range end field.
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get periodRangeTo;
+
+  /// Confirms the chosen date range.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply range'**
+  String get periodApplyRange;
+
+  /// How many days the chosen range covers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} day} other{{count} days}}'**
+  String periodRangeDays({required int count});
+
+  /// Range preset: the last seven days.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 7 days'**
+  String get periodPresetLast7;
+
+  /// Range preset: the last thirty days.
+  ///
+  /// In en, this message translates to:
+  /// **'Last 30 days'**
+  String get periodPresetLast30;
+
+  /// Range preset: the current month so far.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get periodPresetThisMonth;
+
+  /// Range preset: the whole previous month.
+  ///
+  /// In en, this message translates to:
+  /// **'Last month'**
+  String get periodPresetLastMonth;
+
+  /// Range preset: the current year so far.
+  ///
+  /// In en, this message translates to:
+  /// **'This year'**
+  String get periodPresetThisYear;
+
+  /// Heading of the trend chart in the range lens.
+  ///
+  /// In en, this message translates to:
+  /// **'Across the range'**
+  String get statsRangeTrendTitle;
+
+  /// Home hero caption in the range lens.
+  ///
+  /// In en, this message translates to:
+  /// **'NET FOR {range}'**
+  String homeNetForRange({required String range});
+
+  /// Heading of the trend chart in the day lens.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Last day} other{Last {count} days}}'**
+  String statsLastDays({required int count});
 }
 
 class _AppLocalizationsDelegate

@@ -47,6 +47,10 @@ type Transaction struct {
 	ToAccountID string `json:"to_account_id"`
 	Note        string `json:"note"`
 	OccurredAt  string `json:"occurred_at"`
+	// SortOrder is the owner's manual placement inside the local day; 0 means
+	// "never placed by hand", which falls back to newest-first time order.
+	// Display-only: the bot carries it through snapshots and writes 0.
+	SortOrder   int    `json:"sort_order"`
 	Source      string `json:"source"`
 	CreatedAtMs int64  `json:"created_at_ms"`
 	UpdatedAtMs int64  `json:"updated_at_ms"`

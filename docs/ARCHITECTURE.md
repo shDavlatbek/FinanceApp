@@ -4,6 +4,8 @@ This document is the **binding contract** between the Flutter app and the Go ser
 
 > **v2 (2026-08-19)** — the bespoke REST sync API is gone. Both peers now sync through **Google Drive**. The app and the bot are equal peers; neither talks to the other directly.
 >
+> **v4 (2026-08-21)** — **manual order**. Transactions gain `sort_order`, letting the owner drag an entry into the exact place they want it inside its day. Snapshot schema goes to **3**. `occurred_at` now carries a meaningful time-of-day (it always could; the app just never let you set one).
+>
 > **v3 (2026-08-20)** — **accounts**. Money now sits somewhere: cash, a card, savings, investments. Every transaction names the account it moves through, and a third transaction kind, `transfer`, moves money between two of the owner's own accounts without touching any income or expense total. Snapshot schema goes to **2**. Also adds file **export/import**, which reuses the snapshot format rather than inventing a second one.
 
 ## System overview
@@ -25,7 +27,7 @@ This document is the **binding contract** between the Flutter app and the Go ser
 - **Local-first**: each peer's SQLite is the source of truth for its own UI. Every write lands locally first; Drive sync is opportunistic. The app is fully functional with **no Drive connected** (standalone mode).
 - **Single writer per file**: a peer only ever writes its own snapshot file, so two peers can never conflict on one file. Convergence comes from every peer reading every other peer's file and merging.
 - **Single user**: one Google account, one OAuth client, one Telegram allow-list.
-- **One currency**, amounts stored as **integer minor units**.
+- **One currency**, amounts stored as **integer minor units**. The number of minor units per major unit is fixed per ISO code by a table duplicated in `app/lib/core/money.dart` (`kCurrencyExponents`) and `server/internal/i18n/money.go` (`currencies`), and the two **must** stay identical: the exponent is what turns a typed `250` into a stored amount, so a disagreement makes the same row read 100x apart on the two peers. UZS is deliberately zero-decimal — ISO and CLDR say two, but tiyin are long out of use — so it cannot be taken from `intl` or `x/text`.
 - **Every transaction belongs to an account.** Balances are derived, never stored: an account's balance is its opening balance plus everything logged against it. There is no running-total column to drift out of step with the rows.
 
 ## Data model
@@ -42,11 +44,18 @@ All rows carry a client-generated UUIDv4 `id`, `updated_at_ms` (int64, unix ms),
 | account_id | string uuid | FK → account. Money leaves it on an expense, arrives on an income, and is the **source** of a transfer |
 | to_account_id | string uuid | FK → account. The **destination** of a transfer; **empty for every other kind** |
 | note | string | may be empty |
-| occurred_at | string RFC3339 UTC | canonical `…Z` form; normalize on write |
+| occurred_at | string RFC3339 UTC | canonical `…Z` form; normalize on write. Carries the **time of day**, not just the date |
+| sort_order | int | **NEW in v4.** Manual placement inside the local day. `0` = never placed by hand |
 | source | `"app"` \| `"telegram"` | |
 | created_at_ms | int64 | |
 | updated_at_ms | int64 | |
 | deleted_at_ms | int64 \| null | |
+
+**Display order is `sort_order` then time.** Inside one local day, rows sort by `sort_order` ascending, then `occurred_at` descending, then `created_at_ms` descending. A day nobody has touched has `sort_order = 0` throughout, so it falls back to pure newest-first time order; dragging a day renumbers **that day's** rows `1..N` in the order shown. A new entry lands with `0` and therefore appears at the top of its day, even one that has been hand-ordered — dragging again is how you place it.
+
+Ordering across days is always by day, newest first: `sort_order` only ever competes inside a single day, never between them. The days themselves are computed in **local** time, which is why the within-day sort happens after grouping rather than in SQL — SQLite cannot know the peer's UTC offset.
+
+`sort_order` is display-only. The bot carries it through snapshots untouched and sets `0` on everything it writes; it has no list to reorder.
 
 **Transfers are not spending.** `income` and `expense` totals, the category breakdown and the transaction count all ignore `kind = "transfer"` on both peers. Moving 500 000 from a card into savings must leave the month's "spent" figure exactly where it was — otherwise saving money would look like losing it, which is the one thing this feature must never do.
 

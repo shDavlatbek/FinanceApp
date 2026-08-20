@@ -177,5 +177,22 @@
   "seedAccountSavings": "Jamgʻarma",
   "seedAccountInvestments": "Investitsiyalar",
   "transactionTransfer": "Oʻtkazma",
-  "transactionTransferRoute": "{from} → {to}"
+  "transactionTransferRoute": "{from} → {to}",
+  "periodRange": "Oraliq",
+  "periodSwitchToRange": "Ixtiyoriy sana oraligʻini koʻrsatish",
+  "periodPickDateHint": "Koʻrsatilayotgan davrni oʻzgartirish",
+  "periodPickMonthTitle": "Oyni tanlang",
+  "periodPickRangeTitle": "Sana oraligʻini tanlang",
+  "periodRangeFrom": "Dan",
+  "periodRangeTo": "Gacha",
+  "periodApplyRange": "Qoʻllash",
+  "periodRangeDays": "{count, plural, one{{count} kun} other{{count} kun}}",
+  "periodPresetLast7": "7 kun",
+  "periodPresetLast30": "30 kun",
+  "periodPresetThisMonth": "Shu oy",
+  "periodPresetLastMonth": "Oʻtgan oy",
+  "periodPresetThisYear": "Shu yil",
+  "statsRangeTrendTitle": "Oraliq boʻyicha",
+  "homeNetForRange": "{range} SOF QOLDIQ",
+  "statsLastDays": "{count, plural, one{Soʻnggi kun} other{Soʻnggi {count} kun}}"
 }

@@ -1,4 +1,4 @@
-/// One transaction row: emoji medallion, category, note/time, signed amount.
+/// One transaction row: emoji medallion, category, time and note, signed amount.
 ///
 /// A transfer is rendered differently on purpose: it carries no category, so
 /// it shows the two accounts it moves between and an UNSIGNED amount in the
@@ -50,8 +50,10 @@ class TransactionTile extends ConsumerWidget {
           from: accountLabel(tx.accountId),
           to: accountLabel(tx.toAccountId),
         ),
-      if (tx.note.isNotEmpty) tx.note
-      else if (!isTransfer) timeLabel(when, locale: locale),
+      // The time always shows: it is what orders a day, so hiding it behind
+      // "only when there is no note" made the order look arbitrary.
+      timeLabel(when, locale: locale),
+      if (tx.note.isNotEmpty) tx.note,
       if (tx.source == TxSource.telegram) l10n.sourceTelegram,
     ];
     final isIncome = tx.kind == Kind.income;

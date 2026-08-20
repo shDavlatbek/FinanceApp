@@ -12,6 +12,7 @@ import '../../core/dates.dart';
 import '../../core/money.dart';
 import '../../core/theme.dart';
 import '../../l10n/l10n.dart';
+import '../common/adaptive_amount.dart';
 import '../common/animated_item_list.dart';
 import '../common/cards.dart';
 import '../common/count_up_amount.dart';
@@ -42,9 +43,13 @@ class HomeScreen extends ConsumerWidget {
         ref.watch(periodTransactionsProvider).value ?? const <Transaction>[];
 
     final now = DateTime.now();
+    final range = ref.watch(selectedRangeProvider);
     final isCurrentPeriod = switch (mode) {
       PeriodMode.day => isSameDay(periodStart, now),
       PeriodMode.month => isSameMonth(periodStart, now),
+      // A custom span is never "the current period": it is exactly the span
+      // the user asked for, so the caption always names it.
+      PeriodMode.range => false,
     };
     // The hero caption names the period unless it is the current one, where
     // "NET THIS MONTH" / "NET TODAY" reads better than repeating the date.
@@ -56,6 +61,11 @@ class HomeScreen extends ConsumerWidget {
       (PeriodMode.month, true) => l10n.homeNetThisMonth,
       (PeriodMode.month, false) => l10n.homeNetForMonth(
           month: monthLabel(periodStart, locale: locale).toUpperCase(),
+        ),
+      (PeriodMode.range, _) => l10n.homeNetForRange(
+          range: rangeLabel(range.from, range.to,
+                  locale: locale, compact: false)
+              .toUpperCase(),
         ),
     };
     final showEmpty = totals != null &&
@@ -105,8 +115,13 @@ class HomeScreen extends ConsumerWidget {
                           style: theme.displayLarge!,
                         ),
                         const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        // Wrap, not Row: two chips holding nine-figure soʻm amounts do
+                        // not fit on one line, and stacking them reads better than
+                        // squeezing both.
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 10,
+                          runSpacing: 10,
                           children: [
                             _CaptionChip(
                               dotColor: t.income,
@@ -116,12 +131,21 @@ class HomeScreen extends ConsumerWidget {
                                 currency,
                                 locale: locale,
                               ),
+                              amountPlain: formatMinorPlain(
+                                totals?.incomeMinor ?? 0,
+                                currency,
+                                locale: locale,
+                              ),
                             ),
-                            const SizedBox(width: 10),
                             _CaptionChip(
                               dotColor: t.textSecondary,
                               label: l10n.commonSpent,
                               amount: formatMinor(
+                                totals?.expenseMinor ?? 0,
+                                currency,
+                                locale: locale,
+                              ),
+                              amountPlain: formatMinorPlain(
                                 totals?.expenseMinor ?? 0,
                                 currency,
                                 locale: locale,
@@ -133,9 +157,7 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 22),
-                  const Center(child: PeriodSwitcher()),
-                  const SizedBox(height: 10),
-                  const Center(child: PeriodModeToggle()),
+                  const PeriodBar(),
                   const SizedBox(height: 28),
 
                   // ---- content ------------------------------------------
@@ -170,9 +192,11 @@ class HomeScreen extends ConsumerWidget {
                       ),
                     const SizedBox(height: 24),
                     SectionHeader(
-                      mode == PeriodMode.day
-                          ? l10n.homeDayEntriesSection
-                          : l10n.homeRecentSection,
+                      // Only the month lens shows a "recent" excerpt; the day
+                      // and range lenses list what is actually in the period.
+                      mode == PeriodMode.month
+                          ? l10n.homeRecentSection
+                          : l10n.homeDayEntriesSection,
                       trailing: TextButton(
                         onPressed: () => context.go('/history'),
                         child: Text(l10n.commonAll),
@@ -218,11 +242,15 @@ class _CaptionChip extends StatelessWidget {
     required this.dotColor,
     required this.label,
     required this.amount,
+    required this.amountPlain,
   });
 
   final Color dotColor;
   final String label;
   final String amount;
+
+  /// The same amount without its currency symbol; see [AdaptiveAmount].
+  final String amountPlain;
 
   @override
   Widget build(BuildContext context) {
@@ -245,13 +273,23 @@ class _CaptionChip extends StatelessWidget {
                 BoxDecoration(color: dotColor, shape: BoxShape.circle),
           ),
           const SizedBox(width: 7),
-          Text(label,
-              style:
-                  theme.labelMedium!.copyWith(color: t.textSecondary)),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.labelMedium!.copyWith(color: t.textSecondary),
+            ),
+          ),
           const SizedBox(width: 6),
-          Text(amount,
+          Flexible(
+            child: AdaptiveAmount(
+              amount,
+              fallback: amountPlain,
               style: money(theme.labelMedium!)
-                  .copyWith(fontWeight: FontWeight.w700)),
+                  .copyWith(fontWeight: FontWeight.w700),
+            ),
+          ),
         ],
       ),
     );
@@ -373,6 +411,9 @@ class _CategoryBarsState extends State<CategoryBars>
             children: [
               Text(ct.category.emoji, style: const TextStyle(fontSize: 15)),
               const SizedBox(width: 8),
+              // Expanded, not Flexible+Spacer: the name yields whatever the
+              // amount needs. A Spacer would compete with the amount for flex
+              // space and force long values to ellipsize.
               Expanded(
                 child: Text(
                   context.categoryName(
@@ -390,14 +431,22 @@ class _CategoryBarsState extends State<CategoryBars>
                 style: money(theme.bodySmall!),
               ),
               const SizedBox(width: 10),
-              Text(
-                formatMinor(
-                  ct.totalMinor,
-                  widget.currency,
-                  locale: context.localeTag,
+              Flexible(
+                child: AdaptiveAmount(
+                  formatMinor(
+                    ct.totalMinor,
+                    widget.currency,
+                    locale: context.localeTag,
+                  ),
+                  fallback: formatMinorPlain(
+                    ct.totalMinor,
+                    widget.currency,
+                    locale: context.localeTag,
+                  ),
+                  style: money(theme.bodyMedium!)
+                      .copyWith(fontWeight: FontWeight.w700),
+                  textAlign: TextAlign.right,
                 ),
-                style: money(theme.bodyMedium!)
-                    .copyWith(fontWeight: FontWeight.w700),
               ),
             ],
           ),

@@ -9,6 +9,35 @@ import '../db/database.dart';
 ///
 /// Every mutation sets `updated_at_ms = now` and `dirty = true`, then invokes
 /// [onMutation] (wired to the sync engine's debounced trigger).
+/// The `sort_order` of a row nobody has dragged. Sorts ahead of every
+/// hand-placed row, so a new entry lands at the top of its day.
+const int unplacedSortOrder = 0;
+
+/// Orders rows the way every list in the app shows them: newest day first,
+/// then manual placement inside the day, then newest time first.
+///
+/// The within-day part cannot be done in SQL. Days are LOCAL, and SQLite has
+/// no idea what this peer's UTC offset is, so grouping has to happen in Dart
+/// and the ordering has to happen with it (docs/ARCHITECTURE.md v4).
+List<Transaction> sortedForDisplay(List<Transaction> rows) {
+  // Decorate with the day key once rather than parsing it inside the
+  // comparator, which would re-parse O(n log n) times.
+  final List<({String day, Transaction tx})> keyed = <({String day, Transaction tx})>[
+    for (final Transaction tx in rows)
+      (day: dayKeyFromOccurredAt(tx.occurredAt), tx: tx),
+  ];
+  keyed.sort((({String day, Transaction tx}) a, ({String day, Transaction tx}) b) {
+    if (a.day != b.day) return b.day.compareTo(a.day);
+    if (a.tx.sortOrder != b.tx.sortOrder) {
+      return a.tx.sortOrder.compareTo(b.tx.sortOrder);
+    }
+    final int byTime = b.tx.occurredAt.compareTo(a.tx.occurredAt);
+    if (byTime != 0) return byTime;
+    return b.tx.createdAtMs.compareTo(a.tx.createdAtMs);
+  });
+  return <Transaction>[for (final k in keyed) k.tx];
+}
+
 class TransactionsRepository {
   TransactionsRepository(
     this._db, {
@@ -32,7 +61,7 @@ class TransactionsRepository {
         (t) => OrderingTerm.desc(t.createdAtMs),
       ])
       ..limit(limit);
-    return q.watch();
+    return q.watch().map(sortedForDisplay);
   }
 
   /// All non-deleted transactions in the local month of [month],
@@ -44,6 +73,13 @@ class TransactionsRepository {
   /// newest first — the day lens's counterpart to [watchMonth].
   Stream<List<Transaction>> watchDay(DateTime day) => watchFiltered(day: day);
 
+  /// Every transaction in the inclusive local day range [from]..[to], newest
+  /// first — the range lens's counterpart to [watchMonth].
+  Stream<List<Transaction>> watchRange(DateTime from, DateTime to) {
+    final r = normalizeRange(from, to);
+    return watchFiltered(rangeFrom: r.from, rangeTo: r.to);
+  }
+
   /// Filtered list for History: optional note substring search
   /// (case-insensitive), category, kind, and month filters. Newest first.
   /// Passing both [month] and [day] is a caller error: [day] wins, because a
@@ -54,10 +90,17 @@ class TransactionsRepository {
     String? kind,
     DateTime? month,
     DateTime? day,
+    DateTime? rangeFrom,
+    DateTime? rangeTo,
   }) {
     final q = _db.select(_db.transactions)
       ..where((t) => t.deletedAtMs.isNull());
-    if (day != null) {
+    if (rangeFrom != null && rangeTo != null) {
+      final bounds = rangeQueryBounds(rangeFrom, rangeTo);
+      q.where((t) =>
+          t.occurredAt.isBiggerOrEqualValue(bounds.start) &
+          t.occurredAt.isSmallerThanValue(bounds.end));
+    } else if (day != null) {
       final bounds = dayQueryBounds(day);
       q.where((t) =>
           t.occurredAt.isBiggerOrEqualValue(bounds.start) &
@@ -82,7 +125,29 @@ class TransactionsRepository {
       (t) => OrderingTerm.desc(t.occurredAt),
       (t) => OrderingTerm.desc(t.createdAtMs),
     ]);
-    return q.watch();
+    return q.watch().map(sortedForDisplay);
+  }
+
+  /// Places [orderedIds] in exactly that order, numbering them `1..N`.
+  ///
+  /// Call it with every id of ONE local day: numbering is per-day, so mixing
+  /// days would interleave them. Each row's `updated_at_ms` is bumped so the
+  /// placement travels to the other peer under last-write-wins.
+  Future<void> reorderDay(List<String> orderedIds) async {
+    if (orderedIds.isEmpty) return;
+    final int nowMs = _now();
+    await _db.transaction(() async {
+      for (int i = 0; i < orderedIds.length; i++) {
+        await (_db.update(_db.transactions)
+              ..where((t) => t.id.equals(orderedIds[i])))
+            .write(TransactionsCompanion(
+          sortOrder: Value(i + 1),
+          updatedAtMs: Value(nowMs),
+          dirty: const Value(true),
+        ));
+      }
+    });
+    _onMutation?.call();
   }
 
   Future<Transaction?> getById(String id) =>
@@ -112,6 +177,7 @@ class TransactionsRepository {
       toAccountId: '',
       note: note,
       occurredAt: toOccurredAt(occurredAt ?? DateTime.now()),
+      sortOrder: unplacedSortOrder,
       source: source,
       createdAtMs: nowMs,
       updatedAtMs: nowMs,
@@ -159,6 +225,7 @@ class TransactionsRepository {
       toAccountId: toAccountId,
       note: note,
       occurredAt: toOccurredAt(occurredAt ?? DateTime.now()),
+      sortOrder: unplacedSortOrder,
       source: source,
       createdAtMs: nowMs,
       updatedAtMs: nowMs,

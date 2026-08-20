@@ -11,6 +11,7 @@ import '../../core/dates.dart';
 import '../../core/money.dart';
 import '../../core/theme.dart';
 import '../../l10n/l10n.dart';
+import '../common/adaptive_amount.dart';
 import '../common/cards.dart';
 import '../common/count_up_amount.dart';
 import '../common/empty_state.dart';
@@ -53,9 +54,7 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         children: [
           Text(l10n.statsTitle, style: theme.titleLarge),
           const SizedBox(height: 14),
-          const Center(child: PeriodSwitcher()),
-          const SizedBox(height: 10),
-          const Center(child: PeriodModeToggle()),
+          const PeriodBar(),
           const SizedBox(height: 18),
           KindPill(
             value: _kind,
@@ -69,8 +68,14 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             EmptyState(
               emoji: _kind == Kind.income ? '💼' : '🍩',
               title: l10n.statsNoDataTitle(
-                  month: periodLabel(context,
-                      mode: mode, start: periodStart)),
+                month: periodLabel(
+                  context,
+                  mode: mode,
+                  start: periodStart,
+                  range: ref.watch(selectedRangeProvider),
+                  long: true,
+                ),
+              ),
               message: _kind == Kind.income
                   ? l10n.statsNoIncomeMessage
                   : l10n.statsNoSpendingMessage,
@@ -101,7 +106,13 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
               ),
             ),
           const SizedBox(height: 24),
-          SectionHeader(l10n.statsLastMonths(count: 6)),
+          SectionHeader(
+            switch (mode) {
+              PeriodMode.day => l10n.statsLastDays(count: trend.length),
+              PeriodMode.month => l10n.statsLastMonths(count: 6),
+              PeriodMode.range => l10n.statsRangeTrendTitle,
+            },
+          ),
           TallyCard(
             padding: const EdgeInsets.fromLTRB(14, 20, 14, 12),
             child: _TrendBars(
@@ -118,6 +129,15 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
                   case PeriodMode.month:
                     ref.read(selectedMonthProvider.notifier).state =
                         monthStart(start);
+                  case PeriodMode.range:
+                    // Tapping a bucket inside a custom range drills into that
+                    // bucket rather than moving the range out from under the
+                    // user: the range stays, the day lens takes over.
+                    ref.read(selectedDayProvider.notifier).state =
+                        dayStart(start);
+                    ref
+                        .read(periodModeProvider.notifier)
+                        .setMode(PeriodMode.day);
                 }
               },
             ),
@@ -220,11 +240,17 @@ class _Donut extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
-                  CountUpAmount(
-                    minor: sel == null ? sum : totals[sel].totalMinor,
-                    format: (v) => formatMinor(v, currency, locale: locale),
-                    style: theme.displaySmall!.copyWith(fontSize: 27),
-                    duration: const Duration(milliseconds: 350),
+                  // Bounded to the donut's hole: an unbounded hero number in
+                  // a high-denomination currency would run under the ring.
+                  SizedBox(
+                    width: 132,
+                    child: CountUpAmount(
+                      minor: sel == null ? sum : totals[sel].totalMinor,
+                      format: (v) => formatMinor(v, currency, locale: locale),
+                      style: theme.displaySmall!.copyWith(fontSize: 27),
+                      duration: const Duration(milliseconds: 350),
+                      minScale: 0.5,
+                    ),
                   ),
                   if (sel != null) ...[
                     const SizedBox(height: 3),
@@ -304,6 +330,7 @@ class _Legend extends StatelessWidget {
                   Text(ct.category.emoji,
                       style: const TextStyle(fontSize: 14)),
                   const SizedBox(width: 7),
+                  // Expanded, not Flexible+Spacer — see Home's category bars.
                   Expanded(
                     child: Text(
                       context.categoryName(
@@ -327,10 +354,15 @@ class _Legend extends StatelessWidget {
                     style: money(theme.bodySmall!),
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    formatMinor(ct.totalMinor, currency, locale: locale),
-                    style: money(theme.bodyMedium!)
-                        .copyWith(fontWeight: FontWeight.w700),
+                  Flexible(
+                    child: AdaptiveAmount(
+                      formatMinor(ct.totalMinor, currency, locale: locale),
+                      fallback: formatMinorPlain(ct.totalMinor, currency,
+                          locale: locale),
+                      style: money(theme.bodyMedium!)
+                          .copyWith(fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.right,
+                    ),
                   ),
                 ],
               ),
@@ -363,7 +395,18 @@ class _TrendBars extends StatefulWidget {
   bool isSelected(DateTime a) => switch (mode) {
         PeriodMode.day => isSameDay(a, selectedStart),
         PeriodMode.month => isSameMonth(a, selectedStart),
+        // Every bucket of a custom range is inside the selected period, so
+        // highlighting one of them would be meaningless.
+        PeriodMode.range => false,
       };
+
+  /// Range buckets are days or months depending on the span; the axis has to
+  /// label whichever it got. Two buckets in the same month means daily.
+  bool get _bucketsAreDaily =>
+      mode == PeriodMode.day ||
+      (mode == PeriodMode.range &&
+          periods.length > 1 &&
+          isSameMonth(periods.first.start, periods[1].start));
 
   @override
   State<_TrendBars> createState() => _TrendBarsState();
@@ -432,7 +475,7 @@ class _TrendBarsState extends State<_TrendBars> {
                       final active = widget.isSelected(m);
                       // Fourteen day-of-month numbers fit where fourteen
                       // month names would not.
-                      final label = widget.mode == PeriodMode.day
+                      final label = widget._bucketsAreDaily
                           ? '${m.day}'
                           : shortMonthLabel(m, locale: locale);
                       return Padding(

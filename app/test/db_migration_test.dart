@@ -236,6 +236,7 @@ void main() {
           toAccountId: 'a1c7e2f0-0003-4a00-9000-000000000003',
           note: '',
           occurredAt: '2026-08-20T10:00:00Z',
+          sortOrder: 0,
           source: TxSource.app,
           createdAtMs: 1755000002000,
           updatedAtMs: 1755000002000,
@@ -243,15 +244,25 @@ void main() {
           dirty: true,
         ));
     expect(await db.select(db.transactions).get(), hasLength(2));
+
+    // Manual order (v4) arrives on the same upgrade. Every pre-existing row
+    // must read as "never placed by hand", so nothing visibly reorders when
+    // the owner updates the app.
+    final Transaction migrated = await (db.select(db.transactions)
+          ..where((t) => t.id.equals('tx-old')))
+        .getSingle();
+    expect(migrated.sortOrder, 0);
+    expect(migrated.occurredAt, '2026-08-01T10:00:00Z',
+        reason: 'the upgrade must not touch when an entry happened');
   });
 
-  test('a fresh database is created at v3 with accounts', () async {
+  test('a fresh database is created at v4 with accounts and manual order', () async {
     final AppDatabase db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final SettingsRow settings = await db.select(db.settings).getSingle();
     expect(settings.language, defaultLanguage);
     expect(settings.defaultAccountId, defaultAccountId);
-    expect(db.schemaVersion, 3);
+    expect(db.schemaVersion, 4);
 
     // The seed accounts are part of the contract: savings and investments
     // must exist out of the box so "send to savings" works with no setup.

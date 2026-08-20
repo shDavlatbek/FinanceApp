@@ -15,12 +15,43 @@ int _pow10(int n) {
   return v;
 }
 
-/// Number of decimal digits for [currencyCode] (2 for USD/EUR, 0 for JPY, ...).
+/// Currency exponents that MUST match the Go bot's table in
+/// `server/internal/i18n/money.go`.
+///
+/// The exponent is the scale between a typed amount and the stored
+/// `amount_minor`, so if the two peers disagree the same transaction reads
+/// 100x apart on the two ends: `250` typed at the bot becomes 250 minor units
+/// while the app reads it as 2.50. `test/currency_parity_test.dart` diffs this
+/// map against the Go source to keep them honest.
+///
+/// UZS is the reason this table exists rather than trusting `intl`: ISO 4217
+/// and CLDR both give it two decimals, but tiyin have been out of use for
+/// decades and nobody in Uzbekistan writes `12 000,00 soʻm`. The bot already
+/// treated it as zero-decimal; this is the side that was wrong.
+const Map<String, int> kCurrencyExponents = <String, int>{
+  'USD': 2,
+  'EUR': 2,
+  'GBP': 2,
+  'RUB': 2,
+  'UAH': 2,
+  'KZT': 2,
+  'TRY': 2,
+  'INR': 2,
+  'CNY': 2,
+  'UZS': 0,
+  'JPY': 0,
+  'KRW': 0,
+};
+
+/// Number of decimal digits for [currencyCode] (2 for USD/EUR, 0 for UZS/JPY).
 ///
 /// Deliberately locale-free: the exponent is a property of the ISO currency,
 /// not of the language, and it is what converts minor units to major ones.
 int decimalDigitsFor(String currencyCode) {
-  final format = NumberFormat.currency(name: currencyCode.toUpperCase());
+  final String code = currencyCode.toUpperCase();
+  final int? shared = kCurrencyExponents[code];
+  if (shared != null) return shared;
+  final format = NumberFormat.currency(name: code);
   return format.decimalDigits ?? 2;
 }
 
@@ -45,12 +76,42 @@ String formatMinor(
   String? locale,
 }) {
   final code = currencyCode.toUpperCase();
+  final int digits = decimalDigitsFor(code);
   final format = symbol
-      ? NumberFormat.simpleCurrency(locale: locale, name: code)
-      : NumberFormat.currency(locale: locale, name: code);
-  final digits = format.decimalDigits ?? 2;
-  return format.format(amountMinor / _pow10(digits));
+      ? NumberFormat.simpleCurrency(
+          locale: locale, name: code, decimalDigits: digits)
+      : NumberFormat.currency(
+          locale: locale, name: code, decimalDigits: digits);
+  return format.format(_toMajor(amountMinor, digits));
 }
+
+/// Formats [amountMinor] with no currency symbol at all — `15 360 000` rather
+/// than `15 360 000 soʻm`.
+///
+/// Used as the graceful degradation for dense rows: in a high-denomination
+/// currency the symbol is what pushes an amount past the available width, and
+/// dropping it is far better than ellipsizing a number into `15 360…`. The
+/// currency is stated once on the hero total anyway.
+String formatMinorPlain(
+  int amountMinor,
+  String currencyCode, {
+  String? locale,
+}) {
+  final int digits = decimalDigitsFor(currencyCode.toUpperCase());
+  final format = NumberFormat.decimalPatternDigits(
+    locale: locale,
+    decimalDigits: digits,
+  );
+  return format.format(_toMajor(amountMinor, digits));
+}
+
+/// Minor units -> major units for display.
+///
+/// Zero-decimal currencies skip the division entirely so the value never
+/// becomes a double: those are exactly the currencies whose amounts get large
+/// enough for float precision to start mattering.
+num _toMajor(int amountMinor, int digits) =>
+    digits == 0 ? amountMinor : amountMinor / _pow10(digits);
 
 /// Formats with an explicit sign derived from the transaction [kind]:
 /// income -> `+`, expense -> `−` (U+2212). Pass [signed] false to omit

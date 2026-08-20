@@ -136,12 +136,33 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
   }
 
   void _setToday() {
-    setState(() => _date = DateTime.now());
+    // Keep the time the user set; only the DAY is being changed.
+    setState(() => _date = _withDay(DateTime.now()));
   }
 
   void _setYesterday() {
     final y = DateTime.now().subtract(const Duration(days: 1));
-    setState(() => _date = DateTime(y.year, y.month, y.day, 12));
+    setState(() => _date = _withDay(y));
+  }
+
+  /// [day]'s calendar date carrying the time already chosen. Changing the day
+  /// must never silently move an entry to noon.
+  DateTime _withDay(DateTime day) =>
+      DateTime(day.year, day.month, day.day, _date.hour, _date.minute);
+
+  Future<void> _pickTime() async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_date),
+    );
+    if (picked == null || !mounted) return;
+    setState(() => _date = DateTime(
+          _date.year,
+          _date.month,
+          _date.day,
+          picked.hour,
+          picked.minute,
+        ));
   }
 
   Future<void> _pickDate() async {
@@ -152,8 +173,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
       lastDate: DateTime.now().add(const Duration(days: 1)),
     );
     if (picked != null) {
-      setState(() =>
-          _date = DateTime(picked.year, picked.month, picked.day, 12));
+      setState(() => _date = _withDay(picked));
     }
   }
 
@@ -346,6 +366,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                               onToday: _setToday,
                               onYesterday: _setYesterday,
                               onPick: _pickDate,
+                              onPickTime: _pickTime,
                             ),
                           ],
                         ),
@@ -582,12 +603,14 @@ class _DateChips extends StatelessWidget {
     required this.onToday,
     required this.onYesterday,
     required this.onPick,
+    required this.onPickTime,
   });
 
   final DateTime date;
   final VoidCallback onToday;
   final VoidCallback onYesterday;
   final VoidCallback onPick;
+  final VoidCallback onPickTime;
 
   @override
   Widget build(BuildContext context) {
@@ -598,27 +621,43 @@ class _DateChips extends StatelessWidget {
         dayKey(date) == dayKey(now.subtract(const Duration(days: 1)));
     final custom = !isToday && !isYesterday;
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _chip(context, l10n.commonToday, isToday, onToday),
+        Row(
+          children: [
+            Expanded(
+              child: _chip(context, l10n.commonToday, isToday, onToday),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _chip(
+                  context, l10n.commonYesterday, isYesterday, onYesterday),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _chip(
+                context,
+                custom
+                    ? dayMonthLabel(date, locale: context.localeTag)
+                    : l10n.entryPickDate,
+                custom,
+                onPick,
+                icon: Icons.calendar_today_rounded,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child:
-              _chip(context, l10n.commonYesterday, isYesterday, onYesterday),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _chip(
-            context,
-            custom
-                ? dayMonthLabel(date, locale: context.localeTag)
-                : l10n.entryPickDate,
-            custom,
-            onPick,
-            icon: Icons.calendar_today_rounded,
-          ),
+        const SizedBox(height: 8),
+        // The time sits on its own line rather than as a fourth chip: four
+        // chips leave no room for "Yesterday" in any of the three languages.
+        _chip(
+          context,
+          timeLabel(date, locale: context.localeTag),
+          // Never rendered as "selected": a time is always set, so a filled
+          // pill here would read as a state you cannot turn off.
+          false,
+          onPickTime,
+          icon: Icons.schedule_rounded,
         ),
       ],
     );

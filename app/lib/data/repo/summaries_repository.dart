@@ -95,6 +95,13 @@ class SummariesRepository {
   Stream<PeriodTotals> watchDayTotals(DateTime day) =>
       _watchTotalsBetween(dayStart(day), dayQueryBounds(day));
 
+  /// Income / expense / net totals for the inclusive local day range
+  /// [from]..[to].
+  Stream<PeriodTotals> watchRangeTotals(DateTime from, DateTime to) {
+    final r = normalizeRange(from, to);
+    return _watchTotalsBetween(r.from, rangeQueryBounds(r.from, r.to));
+  }
+
   /// Per-category totals of [kind] between the given bounds, largest first.
   /// Only categories with at least one transaction appear.
   ///
@@ -147,6 +154,20 @@ class SummariesRepository {
     String kind = Kind.expense,
   }) =>
       _watchCategoryTotalsBetween(dayQueryBounds(day), kind: kind);
+
+  /// Per-category totals of [kind] for the inclusive local day range
+  /// [from]..[to].
+  Stream<List<CategoryTotal>> watchRangeCategoryTotals(
+    DateTime from,
+    DateTime to, {
+    String kind = Kind.expense,
+  }) {
+    final r = normalizeRange(from, to);
+    return _watchCategoryTotalsBetween(
+      rangeQueryBounds(r.from, r.to),
+      kind: kind,
+    );
+  }
 
   /// Totals for the last 6 local months ending at [anchorMonth]
   /// (oldest first, always 6 entries, zero-filled).
@@ -235,4 +256,82 @@ class SummariesRepository {
       ];
     });
   }
+
+  /// Trend buckets spanning the inclusive range [from]..[to], oldest first and
+  /// zero-filled.
+  ///
+  /// Buckets by day for spans up to [maxDayBuckets] days and by month beyond
+  /// that: 90 daily bars would be unreadable, and a range covering years would
+  /// be unbounded. Which one you got is inferable from the returned starts, so
+  /// callers label the axis off [rangeBucketsAreDaily].
+  Stream<List<PeriodTotals>> watchRangeBuckets(
+    DateTime from,
+    DateTime to, {
+    int maxDayBuckets = 31,
+  }) {
+    final r = normalizeRange(from, to);
+    final daily = daysInRange(r.from, r.to) <= maxDayBuckets;
+    final bounds = rangeQueryBounds(r.from, r.to);
+
+    final List<DateTime> buckets;
+    if (daily) {
+      buckets = [
+        for (var d = r.from;
+            !d.isAfter(r.to);
+            d = addDays(d, 1))
+          d,
+      ];
+    } else {
+      buckets = [
+        for (var m = monthStart(r.from);
+            !m.isAfter(monthStart(r.to));
+            m = addMonths(m, 1))
+          m,
+      ];
+    }
+
+    final q = _db.customSelect(
+      'SELECT occurred_at, kind, amount_minor FROM transactions '
+      'WHERE deleted_at_ms IS NULL AND kind IN (?, ?) '
+      'AND occurred_at >= ? AND occurred_at < ?',
+      variables: [
+        Variable.withString(Kind.income),
+        Variable.withString(Kind.expense),
+        Variable.withString(bounds.start),
+        Variable.withString(bounds.end),
+      ],
+      readsFrom: {_db.transactions},
+    );
+    String keyOf(DateTime d) => daily ? dayKey(d) : monthKey(d);
+    return q.watch().map((rows) {
+      final income = <String, int>{};
+      final expense = <String, int>{};
+      for (final row in rows) {
+        final key =
+            keyOf(occurredAtToLocal(row.read<String>('occurred_at')));
+        final amount = row.read<int>('amount_minor');
+        if (row.read<String>('kind') == Kind.income) {
+          income[key] = (income[key] ?? 0) + amount;
+        } else {
+          expense[key] = (expense[key] ?? 0) + amount;
+        }
+      }
+      return [
+        for (final b in buckets)
+          PeriodTotals(
+            start: b,
+            incomeMinor: income[keyOf(b)] ?? 0,
+            expenseMinor: expense[keyOf(b)] ?? 0,
+          ),
+      ];
+    });
+  }
 }
+
+/// Whether [watchRangeBuckets] buckets [from]..[to] by day (as opposed to by
+/// month). Kept next to the query so the axis labels can never disagree with
+/// the bucketing.
+bool rangeBucketsAreDaily(DateTime from, DateTime to,
+        {int maxDayBuckets = 31}) =>
+    daysInRange(from, to) <= maxDayBuckets;
+

@@ -55,10 +55,18 @@ Future<void> _loadFonts() async {
   }
 }
 
-Future<void> _seed(AppDatabase db) async {
+Future<void> _seed(AppDatabase db, {int scale = 1}) async {
   final repo = TransactionsRepository(db, onMutation: () {});
   final now = DateTime.now();
-  DateTime d(int daysAgo) => now.subtract(Duration(days: daysAgo));
+  // Distinct times of day, so the captures show real time-of-day ordering
+  // rather than every row sharing the clock time of the test run.
+  DateTime d(int daysAgo, [int hour = 12, int minute = 0]) => DateTime(
+        now.year,
+        now.month,
+        now.day,
+        hour,
+        minute,
+      ).subtract(Duration(days: daysAgo));
 
   Future<void> tx(
     String kind,
@@ -69,20 +77,21 @@ Future<void> _seed(AppDatabase db) async {
   ) =>
       repo.insert(
         kind: kind,
-        amountMinor: minor,
+        amountMinor: minor * scale,
         categoryId: cat,
         note: note,
         occurredAt: at,
       );
 
-  // Current month.
+  // Current month. Two entries an hour apart on the same day, so the captures
+  // show time-of-day ordering (and what manual placement overrides).
   await tx('income', 420000, _salary, 'August salary', d(18));
-  await tx('expense', 24850, _groceries, 'weekly shop', d(1));
-  await tx('expense', 6200, _cafe, 'flat white', d(1));
-  await tx('expense', 3400, _transport, 'metro top-up', d(2));
-  await tx('expense', 128000, _home, 'rent', d(4));
-  await tx('expense', 8790, _utilities, 'electricity', d(5));
-  await tx('expense', 15990, _fun, 'cinema + snacks', d(6));
+  await tx('expense', 24850, _groceries, 'weekly shop', d(1, 18, 40));
+  await tx('expense', 6200, _cafe, 'flat white', d(1, 8, 15));
+  await tx('expense', 3400, _transport, 'metro top-up', d(2, 7, 55));
+  await tx('expense', 128000, _home, 'rent', d(4, 9, 5));
+  await tx('expense', 8790, _utilities, 'electricity', d(5, 16, 30));
+  await tx('expense', 15990, _fun, 'cinema + snacks', d(6, 20, 10));
   await tx('expense', 1099, _subs, 'music', d(7));
   await tx('expense', 31200, _groceries, 'big restock', d(9));
   await tx('expense', 4500, _cafe, 'lunch with Kate', d(11));
@@ -231,6 +240,93 @@ void main() {
     await expectLater(
       find.byType(TallyApp),
       matchesGoldenFile('shots/10_home_uz.png'),
+    );
+
+    await _teardownTree(tester);
+  });
+
+  testWidgets('capture period pickers', skip: !_capture, (tester) async {
+    tester.view.physicalSize = const Size(1170, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = openTestDb();
+    addTearDown(db.close);
+    await _seed(db);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: const TallyApp(),
+      ),
+    );
+    await _settle(tester);
+
+    // Entering the range lens opens the picker straight away.
+    await tester.tap(find.text('Range'));
+    await _settle(tester);
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/13_range_picker.png'),
+    );
+
+    await tester.tap(find.text('Last 30 days'));
+    await _settle(tester);
+    await tester.tap(find.text('Apply range'));
+    await _settle(tester);
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/14_home_range.png'),
+    );
+
+    // Back to the month lens, then tap the date itself to pick a month.
+    await tester.tap(find.text('Month'));
+    await _settle(tester);
+    await tester.tap(find.byIcon(Icons.expand_more_rounded));
+    await _settle(tester);
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/15_month_picker.png'),
+    );
+
+    await _teardownTree(tester);
+  });
+
+  // The reason the adaptive money text exists: UZS is zero-decimal and
+  // high-denomination, so every amount is several times wider than the same
+  // number of dollars.
+  testWidgets('capture uzs screens', skip: !_capture, (tester) async {
+    tester.view.physicalSize = const Size(1170, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = openTestDb();
+    addTearDown(db.close);
+    await _seed(db, scale: 12000);
+    final settings = SettingsRepository(db, onMutation: () {});
+    await settings.setCurrency('UZS');
+    await settings.setLanguage('uz');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: const TallyApp(),
+      ),
+    );
+    await _settle(tester);
+
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/11_home_uzs.png'),
+    );
+
+    await tester.tap(find.byIcon(Icons.donut_small_rounded));
+    await _settle(tester);
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/12_stats_uzs.png'),
     );
 
     await _teardownTree(tester);

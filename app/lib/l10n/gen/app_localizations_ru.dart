@@ -619,4 +619,77 @@ class AppLocalizationsRu extends AppLocalizations {
   String transactionTransferRoute({required String from, required String to}) {
     return '$from → $to';
   }
+
+  @override
+  String get periodRange => 'Период';
+
+  @override
+  String get periodSwitchToRange => 'Показать произвольный период';
+
+  @override
+  String get periodPickDateHint => 'Изменить показанный период';
+
+  @override
+  String get periodPickMonthTitle => 'Выберите месяц';
+
+  @override
+  String get periodPickRangeTitle => 'Выберите период';
+
+  @override
+  String get periodRangeFrom => 'С';
+
+  @override
+  String get periodRangeTo => 'По';
+
+  @override
+  String get periodApplyRange => 'Применить';
+
+  @override
+  String periodRangeDays({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count дня',
+      many: '$count дней',
+      few: '$count дня',
+      one: '$count день',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get periodPresetLast7 => '7 дней';
+
+  @override
+  String get periodPresetLast30 => '30 дней';
+
+  @override
+  String get periodPresetThisMonth => 'Этот месяц';
+
+  @override
+  String get periodPresetLastMonth => 'Прошлый месяц';
+
+  @override
+  String get periodPresetThisYear => 'Этот год';
+
+  @override
+  String get statsRangeTrendTitle => 'За период';
+
+  @override
+  String homeNetForRange({required String range}) {
+    return 'ИТОГ ЗА $range';
+  }
+
+  @override
+  String statsLastDays({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Последние $count дня',
+      many: 'Последние $count дней',
+      few: 'Последние $count дня',
+      one: 'Последний день',
+    );
+    return '$_temp0';
+  }
 }

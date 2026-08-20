@@ -24,7 +24,11 @@ class Transactions extends Table {
   /// FK -> account. The DESTINATION of a transfer; empty for every other kind.
   TextColumn get toAccountId => text().withDefault(const Constant(''))();
   TextColumn get note => text().withDefault(const Constant(''))();
-  TextColumn get occurredAt => text()(); // RFC3339 UTC
+  TextColumn get occurredAt => text()(); // RFC3339 UTC, carries time of day
+
+  /// Manual placement inside the local day; 0 = never placed by hand, which
+  /// falls back to newest-first time order. Synced (docs/ARCHITECTURE.md v4).
+  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   TextColumn get source => text().withDefault(const Constant('app'))();
   IntColumn get createdAtMs => integer()();
   IntColumn get updatedAtMs => integer()();

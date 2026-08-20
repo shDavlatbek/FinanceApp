@@ -94,6 +94,18 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _sourceMeta = const VerificationMeta('source');
   @override
   late final GeneratedColumn<String> source = GeneratedColumn<String>(
@@ -160,6 +172,7 @@ class $TransactionsTable extends Transactions
     toAccountId,
     note,
     occurredAt,
+    sortOrder,
     source,
     createdAtMs,
     updatedAtMs,
@@ -238,6 +251,12 @@ class $TransactionsTable extends Transactions
       );
     } else if (isInserting) {
       context.missing(_occurredAtMeta);
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
     }
     if (data.containsKey('source')) {
       context.handle(
@@ -323,6 +342,10 @@ class $TransactionsTable extends Transactions
         DriftSqlType.string,
         data['${effectivePrefix}occurred_at'],
       )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
       source: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}source'],
@@ -369,6 +392,10 @@ class Transaction extends DataClass implements Insertable<Transaction> {
   final String toAccountId;
   final String note;
   final String occurredAt;
+
+  /// Manual placement inside the local day; 0 = never placed by hand, which
+  /// falls back to newest-first time order. Synced (docs/ARCHITECTURE.md v4).
+  final int sortOrder;
   final String source;
   final int createdAtMs;
   final int updatedAtMs;
@@ -383,6 +410,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     required this.toAccountId,
     required this.note,
     required this.occurredAt,
+    required this.sortOrder,
     required this.source,
     required this.createdAtMs,
     required this.updatedAtMs,
@@ -400,6 +428,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     map['to_account_id'] = Variable<String>(toAccountId);
     map['note'] = Variable<String>(note);
     map['occurred_at'] = Variable<String>(occurredAt);
+    map['sort_order'] = Variable<int>(sortOrder);
     map['source'] = Variable<String>(source);
     map['created_at_ms'] = Variable<int>(createdAtMs);
     map['updated_at_ms'] = Variable<int>(updatedAtMs);
@@ -420,6 +449,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       toAccountId: Value(toAccountId),
       note: Value(note),
       occurredAt: Value(occurredAt),
+      sortOrder: Value(sortOrder),
       source: Value(source),
       createdAtMs: Value(createdAtMs),
       updatedAtMs: Value(updatedAtMs),
@@ -444,6 +474,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       toAccountId: serializer.fromJson<String>(json['toAccountId']),
       note: serializer.fromJson<String>(json['note']),
       occurredAt: serializer.fromJson<String>(json['occurredAt']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
       source: serializer.fromJson<String>(json['source']),
       createdAtMs: serializer.fromJson<int>(json['createdAtMs']),
       updatedAtMs: serializer.fromJson<int>(json['updatedAtMs']),
@@ -463,6 +494,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       'toAccountId': serializer.toJson<String>(toAccountId),
       'note': serializer.toJson<String>(note),
       'occurredAt': serializer.toJson<String>(occurredAt),
+      'sortOrder': serializer.toJson<int>(sortOrder),
       'source': serializer.toJson<String>(source),
       'createdAtMs': serializer.toJson<int>(createdAtMs),
       'updatedAtMs': serializer.toJson<int>(updatedAtMs),
@@ -480,6 +512,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     String? toAccountId,
     String? note,
     String? occurredAt,
+    int? sortOrder,
     String? source,
     int? createdAtMs,
     int? updatedAtMs,
@@ -494,6 +527,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     toAccountId: toAccountId ?? this.toAccountId,
     note: note ?? this.note,
     occurredAt: occurredAt ?? this.occurredAt,
+    sortOrder: sortOrder ?? this.sortOrder,
     source: source ?? this.source,
     createdAtMs: createdAtMs ?? this.createdAtMs,
     updatedAtMs: updatedAtMs ?? this.updatedAtMs,
@@ -518,6 +552,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
       occurredAt: data.occurredAt.present
           ? data.occurredAt.value
           : this.occurredAt,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       source: data.source.present ? data.source.value : this.source,
       createdAtMs: data.createdAtMs.present
           ? data.createdAtMs.value
@@ -543,6 +578,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           ..write('toAccountId: $toAccountId, ')
           ..write('note: $note, ')
           ..write('occurredAt: $occurredAt, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('source: $source, ')
           ..write('createdAtMs: $createdAtMs, ')
           ..write('updatedAtMs: $updatedAtMs, ')
@@ -562,6 +598,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
     toAccountId,
     note,
     occurredAt,
+    sortOrder,
     source,
     createdAtMs,
     updatedAtMs,
@@ -580,6 +617,7 @@ class Transaction extends DataClass implements Insertable<Transaction> {
           other.toAccountId == this.toAccountId &&
           other.note == this.note &&
           other.occurredAt == this.occurredAt &&
+          other.sortOrder == this.sortOrder &&
           other.source == this.source &&
           other.createdAtMs == this.createdAtMs &&
           other.updatedAtMs == this.updatedAtMs &&
@@ -596,6 +634,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
   final Value<String> toAccountId;
   final Value<String> note;
   final Value<String> occurredAt;
+  final Value<int> sortOrder;
   final Value<String> source;
   final Value<int> createdAtMs;
   final Value<int> updatedAtMs;
@@ -611,6 +650,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.toAccountId = const Value.absent(),
     this.note = const Value.absent(),
     this.occurredAt = const Value.absent(),
+    this.sortOrder = const Value.absent(),
     this.source = const Value.absent(),
     this.createdAtMs = const Value.absent(),
     this.updatedAtMs = const Value.absent(),
@@ -627,6 +667,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     this.toAccountId = const Value.absent(),
     this.note = const Value.absent(),
     required String occurredAt,
+    this.sortOrder = const Value.absent(),
     this.source = const Value.absent(),
     required int createdAtMs,
     required int updatedAtMs,
@@ -649,6 +690,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Expression<String>? toAccountId,
     Expression<String>? note,
     Expression<String>? occurredAt,
+    Expression<int>? sortOrder,
     Expression<String>? source,
     Expression<int>? createdAtMs,
     Expression<int>? updatedAtMs,
@@ -665,6 +707,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       if (toAccountId != null) 'to_account_id': toAccountId,
       if (note != null) 'note': note,
       if (occurredAt != null) 'occurred_at': occurredAt,
+      if (sortOrder != null) 'sort_order': sortOrder,
       if (source != null) 'source': source,
       if (createdAtMs != null) 'created_at_ms': createdAtMs,
       if (updatedAtMs != null) 'updated_at_ms': updatedAtMs,
@@ -683,6 +726,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     Value<String>? toAccountId,
     Value<String>? note,
     Value<String>? occurredAt,
+    Value<int>? sortOrder,
     Value<String>? source,
     Value<int>? createdAtMs,
     Value<int>? updatedAtMs,
@@ -699,6 +743,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
       toAccountId: toAccountId ?? this.toAccountId,
       note: note ?? this.note,
       occurredAt: occurredAt ?? this.occurredAt,
+      sortOrder: sortOrder ?? this.sortOrder,
       source: source ?? this.source,
       createdAtMs: createdAtMs ?? this.createdAtMs,
       updatedAtMs: updatedAtMs ?? this.updatedAtMs,
@@ -735,6 +780,9 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
     if (occurredAt.present) {
       map['occurred_at'] = Variable<String>(occurredAt.value);
     }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
     if (source.present) {
       map['source'] = Variable<String>(source.value);
     }
@@ -767,6 +815,7 @@ class TransactionsCompanion extends UpdateCompanion<Transaction> {
           ..write('toAccountId: $toAccountId, ')
           ..write('note: $note, ')
           ..write('occurredAt: $occurredAt, ')
+          ..write('sortOrder: $sortOrder, ')
           ..write('source: $source, ')
           ..write('createdAtMs: $createdAtMs, ')
           ..write('updatedAtMs: $updatedAtMs, ')
@@ -2613,6 +2662,7 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       Value<String> toAccountId,
       Value<String> note,
       required String occurredAt,
+      Value<int> sortOrder,
       Value<String> source,
       required int createdAtMs,
       required int updatedAtMs,
@@ -2630,6 +2680,7 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String> toAccountId,
       Value<String> note,
       Value<String> occurredAt,
+      Value<int> sortOrder,
       Value<String> source,
       Value<int> createdAtMs,
       Value<int> updatedAtMs,
@@ -2684,6 +2735,11 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<String> get occurredAt => $composableBuilder(
     column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2762,6 +2818,11 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get source => $composableBuilder(
     column: $table.source,
     builder: (column) => ColumnOrderings(column),
@@ -2829,6 +2890,9 @@ class $$TransactionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
@@ -2890,6 +2954,7 @@ class $$TransactionsTableTableManager
                 Value<String> toAccountId = const Value.absent(),
                 Value<String> note = const Value.absent(),
                 Value<String> occurredAt = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 Value<int> createdAtMs = const Value.absent(),
                 Value<int> updatedAtMs = const Value.absent(),
@@ -2905,6 +2970,7 @@ class $$TransactionsTableTableManager
                 toAccountId: toAccountId,
                 note: note,
                 occurredAt: occurredAt,
+                sortOrder: sortOrder,
                 source: source,
                 createdAtMs: createdAtMs,
                 updatedAtMs: updatedAtMs,
@@ -2922,6 +2988,7 @@ class $$TransactionsTableTableManager
                 Value<String> toAccountId = const Value.absent(),
                 Value<String> note = const Value.absent(),
                 required String occurredAt,
+                Value<int> sortOrder = const Value.absent(),
                 Value<String> source = const Value.absent(),
                 required int createdAtMs,
                 required int updatedAtMs,
@@ -2937,6 +3004,7 @@ class $$TransactionsTableTableManager
                 toAccountId: toAccountId,
                 note: note,
                 occurredAt: occurredAt,
+                sortOrder: sortOrder,
                 source: source,
                 createdAtMs: createdAtMs,
                 updatedAtMs: updatedAtMs,

@@ -57,10 +57,16 @@ abstract final class Kind {
 /// `settings.language`, the bot has no use for which lens you last used.
 enum PeriodMode {
   day,
-  month;
+  month,
 
-  static PeriodMode fromName(String? raw) =>
-      raw == PeriodMode.day.name ? PeriodMode.day : PeriodMode.month;
+  /// A custom `from`-`to` span of whole days, inclusive at both ends.
+  range;
+
+  static PeriodMode fromName(String? raw) => switch (raw) {
+        'day' => PeriodMode.day,
+        'range' => PeriodMode.range,
+        _ => PeriodMode.month,
+      };
 }
 
 /// Account kinds. Presentation and grouping only — every account holds money
@@ -108,9 +114,15 @@ abstract final class MetaKeys {
   /// which is synced because the Telegram bot reads it.
   static const String uiThemeMode = 'ui_theme_mode';
 
-  /// Home/Stats period lens (`'day'` | `'month'`). Local-only and per-device:
-  /// which lens you last looked through is not data the bot has any use for.
+  /// Home/Stats period lens (`'day'` | `'month'` | `'range'`). Local-only and
+  /// per-device: which lens you last looked through is not data the bot has
+  /// any use for.
   static const String uiPeriodMode = 'ui_period_mode';
+
+  /// First and last day of the custom range lens, as `yyyy-MM-dd` day keys.
+  /// Local-only, for the same reason as [uiPeriodMode].
+  static const String uiRangeFrom = 'ui_range_from';
+  static const String uiRangeTo = 'ui_range_to';
 }
 
 /// Google Drive sync constants (docs/ARCHITECTURE.md § Google Drive sync).
@@ -149,7 +161,7 @@ const String snapshotMimeType = 'application/json';
 
 /// `schema` field of the snapshot envelope written by this build. Schema 2
 /// added accounts, per-transaction account ids and the `transfer` kind.
-const int snapshotSchemaVersion = 2;
+const int snapshotSchemaVersion = 3;
 
 /// Oldest snapshot schema this build still reads. A schema-1 file predates
 /// accounts: it has no `accounts` array and its transactions have no

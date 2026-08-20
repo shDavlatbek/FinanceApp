@@ -15,6 +15,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tally/data/drive/snapshot.dart';
 import 'package:tally/data/providers.dart';
+import 'package:tally/data/repo/transactions_repository.dart'
+    show sortedForDisplay;
 
 File _fixture([String name = 'snapshot.example.json']) {
   // Tests run with CWD = the app package root.
@@ -34,7 +36,7 @@ void main() {
     });
 
     test('envelope fields decode', () {
-      expect(snap.schema, 2);
+      expect(snap.schema, 3);
       expect(snap.deviceId, '11111111-2222-4333-8444-555555555555');
       expect(snap.deviceName, 'Fixture Device');
       expect(snap.writtenAtMs, 1787160000000);
@@ -130,7 +132,7 @@ void main() {
       expect(shop.accountId, 'a1c7e2f0-0002-4a00-9000-000000000002');
       expect(shop.toAccountId, isEmpty);
       expect(shop.note, 'weekly shop');
-      expect(shop.occurredAt, '2026-08-18T09:30:00Z');
+      expect(shop.occurredAt, '2026-08-19T09:30:00Z');
       expect(shop.source, 'app');
       expect(shop.createdAtMs, 1787000000000);
       expect(shop.updatedAtMs, 1787000000000);
@@ -152,6 +154,33 @@ void main() {
         (Transaction t) => t.id == 'aaaaaaaa-0000-4000-8000-000000000005',
       );
       expect(deleted.deletedAtMs, 1787157000000);
+    });
+
+    test('manual placement decodes, and beats time inside a day', () {
+      // The two hand-placed rows share a day and the EARLIER one is placed
+      // first, so a peer that ignored sort_order and sorted by time alone
+      // would show them the other way round.
+      final placedFirst = snap.transactions.firstWhere(
+        (Transaction t) => t.id == 'aaaaaaaa-0000-4000-8000-000000000002',
+      );
+      final placedSecond = snap.transactions.firstWhere(
+        (Transaction t) => t.id == 'aaaaaaaa-0000-4000-8000-000000000001',
+      );
+      expect(placedFirst.sortOrder, 1);
+      expect(placedSecond.sortOrder, 2);
+      expect(placedFirst.occurredAt.compareTo(placedSecond.occurredAt),
+          lessThan(0),
+          reason: 'the fixture must place the earlier row first');
+
+      // Everything untouched by hand decodes as 0, not as an implicit index.
+      final untouched = snap.transactions.firstWhere(
+        (Transaction t) => t.id == 'aaaaaaaa-0000-4000-8000-000000000003',
+      );
+      expect(untouched.sortOrder, 0);
+
+      // And the ordering rule actually puts them in that order.
+      final ordered = sortedForDisplay(<Transaction>[placedSecond, placedFirst]);
+      expect(ordered.first.id, placedFirst.id);
     });
 
     test('int64 beyond double precision survives decoding', () {

@@ -174,6 +174,91 @@ class PeriodModeController extends StateNotifier<PeriodMode> {
       state == PeriodMode.month ? PeriodMode.day : PeriodMode.month);
 }
 
+/// The inclusive `from`..`to` day span shown by [PeriodMode.range].
+///
+/// Persisted per-device alongside the lens itself so that reopening the app in
+/// the range lens shows the span you were actually looking at, rather than
+/// silently resetting to a default that happens to contain different numbers.
+final selectedRangeProvider =
+    StateNotifierProvider<SelectedRangeController, DateRange>(
+  (ref) => SelectedRangeController(ref.watch(databaseProvider)),
+);
+
+/// An inclusive span of whole local days. Both ends are local midnights.
+class DateRange {
+  DateRange(DateTime from, DateTime to)
+      : from = dayStart(from.isAfter(to) ? to : from),
+        to = dayStart(from.isAfter(to) ? from : to);
+
+  /// The default span offered the first time the range lens is opened.
+  factory DateRange.lastDays(int days, {DateTime? now}) {
+    final end = dayStart(now ?? DateTime.now());
+    return DateRange(addDays(end, -(days - 1)), end);
+  }
+
+  final DateTime from;
+  final DateTime to;
+
+  int get dayCount => daysInRange(from, to);
+
+  /// The same-length span immediately before/after this one — what the period
+  /// switcher's chevrons page through in the range lens.
+  DateRange shifted(int steps) {
+    final delta = dayCount * steps;
+    return DateRange(addDays(from, delta), addDays(to, delta));
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is DateRange && other.from == from && other.to == to;
+
+  @override
+  int get hashCode => Object.hash(from, to);
+
+  @override
+  String toString() => 'DateRange(${dayKey(from)}..${dayKey(to)})';
+}
+
+class SelectedRangeController extends StateNotifier<DateRange> {
+  SelectedRangeController(this._db) : super(DateRange.lastDays(7)) {
+    _load();
+  }
+
+  final AppDatabase _db;
+
+  Future<void> _load() async {
+    final String? from = await _db.getMeta(MetaKeys.uiRangeFrom);
+    final String? to = await _db.getMeta(MetaKeys.uiRangeTo);
+    if (!mounted) return;
+    final DateTime? parsedFrom = _parseDayKey(from);
+    final DateTime? parsedTo = _parseDayKey(to);
+    if (parsedFrom == null || parsedTo == null) return;
+    state = DateRange(parsedFrom, parsedTo);
+  }
+
+  Future<void> setRange(DateTime from, DateTime to) async {
+    state = DateRange(from, to);
+    await _db.setMeta(MetaKeys.uiRangeFrom, dayKey(state.from));
+    await _db.setMeta(MetaKeys.uiRangeTo, dayKey(state.to));
+  }
+
+  Future<void> setDateRange(DateRange range) =>
+      setRange(range.from, range.to);
+
+  /// Parses a stored `yyyy-MM-dd` key back into a local midnight. Returns null
+  /// for anything unparseable — a hand-edited or truncated value must not stop
+  /// the app from opening.
+  static DateTime? _parseDayKey(String? raw) {
+    if (raw == null || raw.length != 10) return null;
+    final int? year = int.tryParse(raw.substring(0, 4));
+    final int? month = int.tryParse(raw.substring(5, 7));
+    final int? day = int.tryParse(raw.substring(8, 10));
+    if (year == null || month == null || day == null) return null;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    return DateTime(year, month, day);
+  }
+}
+
 /// First instant of whichever period is currently selected — the single value
 /// every period-aware query below keys off, so the two lenses can never drift
 /// apart.
@@ -181,6 +266,7 @@ final selectedPeriodStartProvider = Provider<DateTime>((ref) =>
     switch (ref.watch(periodModeProvider)) {
       PeriodMode.day => ref.watch(selectedDayProvider),
       PeriodMode.month => ref.watch(selectedMonthProvider),
+      PeriodMode.range => ref.watch(selectedRangeProvider).from,
     });
 
 /// Active ISO-4217 currency code from settings (default 'USD').
@@ -206,6 +292,10 @@ final periodTotalsProvider = StreamProvider<PeriodTotals>((ref) {
     PeriodMode.day => repo.watchDayTotals(ref.watch(selectedDayProvider)),
     PeriodMode.month =>
       repo.watchMonthTotals(ref.watch(selectedMonthProvider)),
+    PeriodMode.range => () {
+        final range = ref.watch(selectedRangeProvider);
+        return repo.watchRangeTotals(range.from, range.to);
+      }(),
   };
 });
 
@@ -218,6 +308,10 @@ final periodCategoryTotalsProvider =
       repo.watchDayCategoryTotals(ref.watch(selectedDayProvider)),
     PeriodMode.month =>
       repo.watchCategoryTotals(ref.watch(selectedMonthProvider)),
+    PeriodMode.range => () {
+        final range = ref.watch(selectedRangeProvider);
+        return repo.watchRangeCategoryTotals(range.from, range.to);
+      }(),
   };
 });
 
@@ -232,6 +326,11 @@ final categoryTotalsByKindProvider =
         kind: kind),
     PeriodMode.month =>
       repo.watchCategoryTotals(ref.watch(selectedMonthProvider), kind: kind),
+    PeriodMode.range => () {
+        final range = ref.watch(selectedRangeProvider);
+        return repo.watchRangeCategoryTotals(range.from, range.to,
+            kind: kind);
+      }(),
   };
 });
 
@@ -243,6 +342,10 @@ final trendProvider = StreamProvider<List<PeriodTotals>>((ref) {
     PeriodMode.day => repo.watchLastDays(ref.watch(selectedDayProvider)),
     PeriodMode.month =>
       repo.watchLastSixMonths(ref.watch(selectedMonthProvider)),
+    PeriodMode.range => () {
+        final range = ref.watch(selectedRangeProvider);
+        return repo.watchRangeBuckets(range.from, range.to);
+      }(),
   };
 });
 
@@ -267,6 +370,14 @@ final periodTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   return switch (ref.watch(periodModeProvider)) {
     PeriodMode.day => repo.watchDay(ref.watch(selectedDayProvider)),
     PeriodMode.month => repo.watchRecent(limit: 5),
+    // Capped: a year-long range holds thousands of rows, and Home is a
+    // summary, not the ledger. History is one tap away for the whole list.
+    PeriodMode.range => () {
+        final range = ref.watch(selectedRangeProvider);
+        return repo
+            .watchRange(range.from, range.to)
+            .map((List<Transaction> rows) => rows.take(50).toList());
+      }(),
   };
 });
 

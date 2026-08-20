@@ -492,6 +492,7 @@ func TestMigrateFromV1Schema(t *testing.T) {
 		`ALTER TABLE settings DROP COLUMN dirty`,
 		`ALTER TABLE categories DROP COLUMN dirty`,
 		`ALTER TABLE transactions DROP COLUMN dirty`,
+		`ALTER TABLE transactions DROP COLUMN sort_order`,
 	} {
 		if _, err := s.db.Exec(stmt); err != nil {
 			t.Fatalf("%s: %v", stmt, err)
@@ -513,6 +514,32 @@ func TestMigrateFromV1Schema(t *testing.T) {
 	}
 	if _, err := s2.HasDirty(); err != nil {
 		t.Fatalf("dirty column missing after migration: %v", err)
+	}
+
+	// Manual order (v4). An existing row must come back as "never placed by
+	// hand" so nothing silently reorders on the owner's phone after an update.
+	if err := s2.InsertTransaction(model.Transaction{
+		ID:          "tx-migrated",
+		Kind:        model.KindExpense,
+		AmountMinor: 1000,
+		CategoryID:  SeedCategories[0].ID,
+		AccountID:   DefaultAccountID,
+		OccurredAt:  "2026-08-19T10:00:00Z",
+		Source:      model.SourceApp,
+		CreatedAtMs: 1,
+		UpdatedAtMs: 1,
+	}); err != nil {
+		t.Fatalf("sort_order column missing after migration: %v", err)
+	}
+	state, err := s2.FullState()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tx := range state.Transactions {
+		if tx.SortOrder != 0 {
+			t.Fatalf("migrated transaction %s has sort_order %d, want 0",
+				tx.ID, tx.SortOrder)
+		}
 	}
 }
 

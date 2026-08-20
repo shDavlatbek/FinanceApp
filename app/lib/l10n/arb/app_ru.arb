@@ -177,5 +177,22 @@
   "seedAccountSavings": "Накопления",
   "seedAccountInvestments": "Инвестиции",
   "transactionTransfer": "Перевод",
-  "transactionTransferRoute": "{from} → {to}"
+  "transactionTransferRoute": "{from} → {to}",
+  "periodRange": "Период",
+  "periodSwitchToRange": "Показать произвольный период",
+  "periodPickDateHint": "Изменить показанный период",
+  "periodPickMonthTitle": "Выберите месяц",
+  "periodPickRangeTitle": "Выберите период",
+  "periodRangeFrom": "С",
+  "periodRangeTo": "По",
+  "periodApplyRange": "Применить",
+  "periodRangeDays": "{count, plural, one{{count} день} few{{count} дня} many{{count} дней} other{{count} дня}}",
+  "periodPresetLast7": "7 дней",
+  "periodPresetLast30": "30 дней",
+  "periodPresetThisMonth": "Этот месяц",
+  "periodPresetLastMonth": "Прошлый месяц",
+  "periodPresetThisYear": "Этот год",
+  "statsRangeTrendTitle": "За период",
+  "homeNetForRange": "ИТОГ ЗА {range}",
+  "statsLastDays": "{count, plural, one{Последний день} few{Последние {count} дня} many{Последние {count} дней} other{Последние {count} дня}}"
 }

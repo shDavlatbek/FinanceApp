@@ -33,6 +33,7 @@ import 'dart:typed_data';
 
 import '../../core/constants.dart';
 import '../db/database.dart';
+import '../repo/transactions_repository.dart' show unplacedSortOrder;
 
 // ---- row <-> JSON (field names are the binding contract) -------------------
 
@@ -45,6 +46,7 @@ Map<String, Object?> transactionToJson(Transaction t) => <String, Object?>{
       'to_account_id': t.toAccountId,
       'note': t.note,
       'occurred_at': t.occurredAt,
+      'sort_order': t.sortOrder,
       'source': t.source,
       'created_at_ms': t.createdAtMs,
       'updated_at_ms': t.updatedAtMs,
@@ -75,6 +77,12 @@ Transaction transactionFromJson(Map<String, Object?> j) {
       toAccountId: toAccountId,
       note: (j['note'] as String?) ?? '',
       occurredAt: j['occurred_at']! as String,
+      // Absent on a schema-2 peer, and a hand-edited negative would sort ahead
+      // of the unplaced rows and invert a day — both mean "never placed".
+      sortOrder: () {
+        final int v = (j['sort_order'] as num?)?.toInt() ?? unplacedSortOrder;
+        return v < 0 ? unplacedSortOrder : v;
+      }(),
       source: (j['source'] as String?) ?? TxSource.app,
       createdAtMs: (j['created_at_ms'] as num?)?.toInt() ??
           (j['updated_at_ms']! as num).toInt(),

@@ -307,6 +307,7 @@ void main() {
             toAccountId: _cash,
             note: '',
             occurredAt: '2026-08-20T10:00:00Z',
+            sortOrder: 0,
             source: TxSource.app,
             createdAtMs: 1787000000000,
             updatedAtMs: 1787000000000,

@@ -52,10 +52,19 @@ void main() {
       );
     });
 
-    test('uz — symbol suffix, NBSP groups, comma decimals', () {
+    test('uz — symbol suffix, NBSP groups, and NO decimals for soʻm', () {
+      // UZS is zero-decimal to match the Telegram bot (see
+      // currency_parity_test.dart): 123456789 minor units IS 123 456 789 soʻm,
+      // not 1 234 567,89. intl reports two decimals for UZS, which is where
+      // the two peers used to disagree by 100x.
       expect(
         formatMinor(123456789, 'UZS', locale: 'uz'),
-        '1${nbsp}234${nbsp}567,89${nbsp}soʼm',
+        '123${nbsp}456${nbsp}789${nbsp}soʼm',
+      );
+      // A two-decimal currency still formats the uz way.
+      expect(
+        formatMinor(123456789, 'USD', locale: 'uz'),
+        '1${nbsp}234${nbsp}567,89$nbsp\$',
       );
     });
 
