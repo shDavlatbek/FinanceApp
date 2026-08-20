@@ -1,13 +1,10 @@
 {
   "@@locale": "uz",
-
   "appTitle": "Tally",
-
   "navHome": "Bosh sahifa",
   "navHistory": "Tarix",
   "navStats": "Statistika",
   "navSettings": "Sozlamalar",
-
   "commonIncome": "Daromad",
   "commonExpense": "Xarajat",
   "commonExpenses": "Xarajatlar",
@@ -21,7 +18,6 @@
   "commonToday": "Bugun",
   "commonYesterday": "Kecha",
   "commonPercent": "{value}%",
-
   "homeNetThisMonth": "SHU OYDAGI SOF QOLDIQ",
   "homeNetForMonth": "SOF · {month}",
   "homeEmptyTitle": "Sokin daftar",
@@ -32,7 +28,6 @@
   "homeRecentSection": "Soʻnggilar",
   "homeNoEntriesTitle": "Hali yozuvlar yoʻq",
   "homeNoEntriesMessage": "Soʻnggi amaliyotlar shu yerda koʻrinadi.",
-
   "historyTitle": "Tarix",
   "historySearchHint": "Izohlardan qidirish",
   "historyCategoryFilter": "Turkum",
@@ -42,7 +37,6 @@
   "historyEmptyTitle": "Bu yerda hali hech nima yoʻq",
   "historyEmptyMessage": "Bu yerda yoki Telegram orqali qoʻshgan yozuvlaringiz shu daftarga tushadi.",
   "historyDeletedItem": "Oʻchirildi · {label}",
-
   "statsTitle": "Statistika",
   "statsNoDataTitle": "{month} uchun maʼlumot yoʻq",
   "statsNoIncomeMessage": "Bu oyda daromad qayd etilmagan.",
@@ -51,7 +45,6 @@
   "statsSpentLabel": "SARFLANGAN",
   "statsLastMonths": "{count, plural, one{Soʻnggi oy} other{Soʻnggi {count} oy}}",
   "statsSharePercent": "{percent}% · {emoji}",
-
   "categoriesTitle": "Turkumlar",
   "categoriesEmptyTitle": "Turkumlar yoʻq",
   "categoriesEmptyMessage": "Tartibga solishni boshlash uchun quyida bittasini qoʻshing.",
@@ -64,7 +57,6 @@
   "categoryArchive": "Arxivlash",
   "categoryArchiveConfirmTitle": "Turkum arxivlansinmi?",
   "categoryArchiveConfirmMessage": "“{name}” tanlov roʻyxatlaridan yashiriladi. Mavjud amaliyotlar uni saqlab qoladi.",
-
   "entryNewTitle": "Yangi yozuv",
   "entryEditTitle": "Yozuvni tahrirlash",
   "entryNoteHint": "Izoh qoʻshish",
@@ -72,10 +64,8 @@
   "entryAddIncome": "Daromad qoʻshish",
   "entryAddExpense": "Xarajat qoʻshish",
   "entryDeleted": "{amount} oʻchirildi",
-
   "transactionUncategorized": "Turkumsiz",
   "sourceTelegram": "Telegram",
-
   "settingsTitle": "Sozlamalar",
   "settingsSyncSection": "Sinxronizatsiya",
   "settingsPreferencesSection": "Parametrlar",
@@ -90,7 +80,6 @@
   "settingsLanguageSystem": "Tizim tili",
   "settingsVersion": "v{version}",
   "settingsAboutBody": "Maʼlumotlar shu qurilmada saqlanadigan, oʻzingizning Google Drive’ingiz orqali sinxronlanadigan va oʻzingiz joylashtirgan Telegram bot orqali yozib boriladigan pul hisobi. Maʼlumotlaringiz oʻz akkauntlaringizdan chiqmaydi.",
-
   "syncIndicatorSyncing": "Sinxronlanmoqda",
   "syncIndicatorOffline": "Oflayn",
   "syncIndicatorIssue": "Sinxronizatsiya nosozligi",
@@ -110,7 +99,6 @@
   "syncNowButton": "Hozir sinxronlash",
   "syncedSnack": "Sinxronlandi",
   "syncFailedSnack": "Sinxronizatsiya boʻlmadi — yuqoridagi holatga qarang",
-
   "driveStandaloneNotice": "Mustaqil rejim — bu qurilmada hammasi oflayn ishlaydi. Telegram bot bilan sinxronlash uchun Google Drive’ni ulang; maʼlumotlaringiz oʻz Drive’ingizda oʻqiladigan JSON koʻrinishida qoladi.",
   "driveNoClientNotice": "Bu buildda Google OAuth mijozi yoʻq. Drive sinxronizatsiyasini yoqish uchun --dart-define=GOOGLE_CLIENT_ID=… va --dart-define=GOOGLE_CLIENT_SECRET=… bilan qayta yigʻing.",
   "driveConnectButton": "Google Drive’ni ulash",
@@ -132,7 +120,6 @@
   "authErrorDenied": "Siz Google’dagi soʻrovni rad etdingiz.",
   "authErrorExpired": "Kod muddati tugadi — qayta urinib koʻring.",
   "authErrorNetwork": "Google bilan aloqa yoʻq — tarmogʻingizni tekshiring.",
-
   "seedCategoryGroceries": "Oziq-ovqat",
   "seedCategoryCafe": "Kafe",
   "seedCategoryTransport": "Transport",
@@ -148,7 +135,6 @@
   "seedCategoryFreelance": "Frilans",
   "seedCategoryGifts": "Sovgʻalar",
   "seedCategoryOtherIncome": "Boshqa daromad",
-
   "currencyUSD": "AQSH dollari",
   "currencyEUR": "Yevro",
   "currencyGBP": "Funt sterling",
@@ -176,5 +162,20 @@
   "currencyZAR": "Janubiy Afrika rendi",
   "currencyRUB": "Rossiya rubli",
   "currencyUZS": "Oʻzbek soʻmi",
-  "currencyKZT": "Qozogʻiston tengesi"
+  "currencyKZT": "Qozogʻiston tengesi",
+  "periodDay": "Kun",
+  "periodMonth": "Oy",
+  "periodSwitchToDay": "Kunlar boʻyicha koʻrsatish",
+  "periodSwitchToMonth": "Butun oyni koʻrsatish",
+  "homeNetToday": "BUGUNGI SOF QOLDIQ",
+  "homeNetForDay": "SOF · {date}",
+  "homeNothingSpentDayTitle": "Bugun hech narsa sarflanmadi",
+  "homeNothingSpentDayMessage": "Hamyon uchun tinch kun.",
+  "homeDayEntriesSection": "Yozuvlar",
+  "seedAccountCash": "Naqd pul",
+  "seedAccountCard": "Karta",
+  "seedAccountSavings": "Jamgʻarma",
+  "seedAccountInvestments": "Investitsiyalar",
+  "transactionTransfer": "Oʻtkazma",
+  "transactionTransferRoute": "{from} → {to}"
 }

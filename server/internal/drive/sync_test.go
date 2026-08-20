@@ -510,3 +510,78 @@ func TestRunDebouncesWritesAndStopsWithContext(t *testing.T) {
 		t.Fatal("Run did not return after ctx was cancelled")
 	}
 }
+
+// Accounts created on the phone must survive a sync pass.
+//
+// Regression: Batch() parsed and sanitized peer accounts, MergeRemote knew how
+// to apply them, and the one line that carried them between the two was
+// missing — so accounts silently never merged. Nothing failed loudly: the
+// settings row naming the new account merged fine, DefaultAccount then fell
+// back to cash without a word, and the bot booked every entry to the wrong
+// account forever.
+func TestSyncMergesPeerAccounts(t *testing.T) {
+	ctx := context.Background()
+	d := newFakeDrive(t)
+	st := testStore(t)
+	e, _ := newTestEngine(t, st, d)
+
+	if err := e.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	folderID, _ := st.MetaOr(store.MetaFolderID, "")
+
+	const revolutID = "a1c7e2f0-0f01-4a00-9000-000000000f01"
+	revolut := model.Account{
+		ID: revolutID, Name: "Revolut", Kind: model.AccountBank, Emoji: "🟣",
+		Color: "#7A3FF2", OpeningBalanceMinor: 250000, SortOrder: 7,
+		UpdatedAtMs: 1787160000000,
+	}
+	// The phone publishes its full state: the seed accounts plus the new one,
+	// and a settings row naming the new one as the bot's booking account.
+	accounts := append([]model.Account{}, store.SeedAccounts...)
+	accounts = append(accounts, revolut)
+	peer := NewSnapshot("phone-device", "Pixel 7", 1787160000000, store.Snapshot{
+		Accounts: accounts,
+		Settings: model.Settings{
+			ID: model.SettingsID, Currency: "USD", Language: "en",
+			DefaultAccountID: revolutID, UpdatedAtMs: 1787160000000,
+		},
+	})
+	body, err := peer.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	d.put(FileName("phone-device"), []string{folderID}, body)
+
+	if err := e.Sync(ctx); err != nil {
+		t.Fatalf("merge pass: %v", err)
+	}
+
+	local, err := st.ListAccounts()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got *model.Account
+	for i := range local {
+		if local[i].ID == revolutID {
+			got = &local[i]
+		}
+	}
+	if got == nil {
+		t.Fatalf("peer account was not merged; have %d accounts", len(local))
+	}
+	if got.Name != "Revolut" || got.Kind != model.AccountBank ||
+		got.OpeningBalanceMinor != 250000 {
+		t.Fatalf("merged account is wrong: %+v", *got)
+	}
+
+	// And the bot now books where the owner actually chose, instead of
+	// silently falling back to cash.
+	def, err := st.DefaultAccount()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if def.ID != revolutID {
+		t.Fatalf("DefaultAccount() = %s, want the account the phone chose", def.ID)
+	}
+}

@@ -89,3 +89,48 @@ String categoryDisplayName({
   final String? translated = localize(key);
   return (translated == null || translated.isEmpty) ? name : translated;
 }
+
+// ---------------------------------------------------------------------------
+// Seed ACCOUNT naming — the identical rule, with `seedAccount*` ARB keys.
+// ---------------------------------------------------------------------------
+
+/// Stable ARB key for every seed account id.
+const Map<String, String> seedAccountNameKeys = <String, String>{
+  'a1c7e2f0-0001-4a00-9000-000000000001': 'seedAccountCash',
+  'a1c7e2f0-0002-4a00-9000-000000000002': 'seedAccountCard',
+  'a1c7e2f0-0003-4a00-9000-000000000003': 'seedAccountSavings',
+  'a1c7e2f0-0004-4a00-9000-000000000004': 'seedAccountInvestments',
+};
+
+final Map<String, String> _canonicalSeedAccountNames = <String, String>{
+  for (final SeedAccount a in seedAccounts) a.id: a.name,
+};
+
+/// True when [id] is one of the four fixed seed account ids.
+bool isSeedAccountId(String id) => _canonicalSeedAccountNames.containsKey(id);
+
+/// The contract's English name for a seed account id, or null for user
+/// accounts.
+String? canonicalSeedAccountName(String id) => _canonicalSeedAccountNames[id];
+
+/// The ARB key for a seed account id, or null for user accounts.
+String? seedAccountNameKey(String id) => seedAccountNameKeys[id];
+
+/// True when [id] is a seed account still carrying its canonical English
+/// name — i.e. not renamed, so it may be localized.
+bool isUnrenamedSeedAccount(String id, String name) =>
+    canonicalSeedAccountName(id) == name;
+
+/// Resolves the name to show for an account, by the same rule as
+/// [categoryDisplayName]: localize only while unrenamed.
+String accountDisplayName({
+  required String id,
+  required String name,
+  required String? Function(String key) localize,
+}) {
+  if (!isUnrenamedSeedAccount(id, name)) return name;
+  final String? key = seedAccountNameKey(id);
+  if (key == null) return name;
+  final String? translated = localize(key);
+  return (translated == null || translated.isEmpty) ? name : translated;
+}

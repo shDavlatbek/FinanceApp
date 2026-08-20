@@ -107,7 +107,12 @@ void main() {
       expect(settings.id, 'settings');
       expect(settings.currency, 'USD');
       expect(settings.language, ''); // follow the device locale
-      expect(settings.updatedAtMs, seedUpdatedAtMs);
+      expect(settings.defaultAccountId, defaultAccountId);
+      // The settings singleton seeds at the "nobody chose anything" sentinel,
+      // NOT at seedUpdatedAtMs. A fixed non-zero seed would tie with the
+      // server's identical seed and freeze currency and language on both
+      // peers forever under strict LWW.
+      expect(settings.updatedAtMs, settingsUnsetMs);
       expect(settings.dirty, isFalse);
     });
   });
@@ -230,6 +235,8 @@ void main() {
         kind: Kind.expense,
         amountMinor: 900,
         categoryId: _groceriesId,
+        accountId: defaultAccountId,
+        toAccountId: '',
         note: 'from telegram',
         occurredAt: '2026-08-19T10:00:00Z',
         source: TxSource.telegram,
@@ -242,6 +249,7 @@ void main() {
         id: settingsRowId,
         currency: 'EUR',
         language: 'ru',
+        defaultAccountId: defaultAccountId,
         updatedAtMs: seedUpdatedAtMs + 10,
         dirty: false,
       );
@@ -367,6 +375,7 @@ void main() {
         kind: Kind.expense,
         amountMinor: 25000,
         categoryId: _groceriesId,
+        accountId: defaultAccountId,
         note: 'weekly stuff',
       );
       expect(tx.dirty, isTrue);
@@ -468,6 +477,8 @@ void main() {
             kind: Kind.income,
             amountMinor: 500000,
             categoryId: _salaryId,
+            accountId: defaultAccountId,
+            toAccountId: '',
             note: 'salary',
             occurredAt: '2026-08-01T09:00:00Z',
             source: TxSource.telegram,
@@ -502,6 +513,8 @@ void main() {
             kind: Kind.expense,
             amountMinor: 1234,
             categoryId: _groceriesId,
+            accountId: defaultAccountId,
+            toAccountId: '',
             note: 'milk',
             occurredAt: '2026-08-20T09:00:00Z',
             source: TxSource.telegram,
@@ -611,7 +624,7 @@ void main() {
           isTrue);
       expect((await db.select(db.settings).getSingle()).dirty, isTrue);
       expect((await db.select(db.settings).getSingle()).updatedAtMs,
-          seedUpdatedAtMs);
+          settingsUnsetMs);
       engineB.dispose();
     });
 

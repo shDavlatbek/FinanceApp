@@ -21,6 +21,25 @@ DateTime addMonths(DateTime month, int n) =>
 bool isSameMonth(DateTime a, DateTime b) =>
     a.year == b.year && a.month == b.month;
 
+/// First instant of the local calendar day containing [d] (local midnight).
+DateTime dayStart(DateTime d) => DateTime(d.year, d.month, d.day);
+
+/// First instant of the local day after the one containing [d].
+///
+/// Built with `DateTime(y, m, d + 1)` rather than `add(Duration(days: 1))` so
+/// it stays exactly midnight across a daylight-saving transition, where a
+/// local "day" is 23 or 25 hours long.
+DateTime nextDayStart(DateTime d) => DateTime(d.year, d.month, d.day + 1);
+
+/// [dayStart] shifted by [n] days (negative allowed), DST-safe for the same
+/// reason as [nextDayStart].
+DateTime addDays(DateTime day, int n) =>
+    DateTime(day.year, day.month, day.day + n);
+
+/// `true` when [a] and [b] fall on the same local calendar day.
+bool isSameDay(DateTime a, DateTime b) =>
+    a.year == b.year && a.month == b.month && a.day == b.day;
+
 /// Grouping key for a local month: `2026-08`.
 String monthKey(DateTime d) => '${_pad4(d.year)}-${_pad2(d.month)}';
 
@@ -82,4 +101,11 @@ String occurredAtQueryBound(DateTime localInstant) {
 ({String start, String end}) monthQueryBounds(DateTime month) => (
       start: occurredAtQueryBound(monthStart(month)),
       end: occurredAtQueryBound(nextMonthStart(month)),
+    );
+
+/// `(startBound, endBound)` SQL bounds covering the local calendar day of
+/// [day] — the day-lens counterpart of [monthQueryBounds].
+({String start, String end}) dayQueryBounds(DateTime day) => (
+      start: occurredAtQueryBound(dayStart(day)),
+      end: occurredAtQueryBound(nextDayStart(day)),
     );

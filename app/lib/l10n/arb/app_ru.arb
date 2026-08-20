@@ -1,13 +1,10 @@
 {
   "@@locale": "ru",
-
   "appTitle": "Tally",
-
   "navHome": "Главная",
   "navHistory": "История",
   "navStats": "Статистика",
   "navSettings": "Настройки",
-
   "commonIncome": "Доход",
   "commonExpense": "Расход",
   "commonExpenses": "Расходы",
@@ -21,7 +18,6 @@
   "commonToday": "Сегодня",
   "commonYesterday": "Вчера",
   "commonPercent": "{value}%",
-
   "homeNetThisMonth": "ИТОГ ЗА МЕСЯЦ",
   "homeNetForMonth": "ИТОГ · {month}",
   "homeEmptyTitle": "Тихая книга",
@@ -32,7 +28,6 @@
   "homeRecentSection": "Последние",
   "homeNoEntriesTitle": "Записей пока нет",
   "homeNoEntriesMessage": "Последние операции появятся здесь.",
-
   "historyTitle": "История",
   "historySearchHint": "Поиск по заметкам",
   "historyCategoryFilter": "Категория",
@@ -42,7 +37,6 @@
   "historyEmptyTitle": "Здесь пока пусто",
   "historyEmptyMessage": "Записи — добавленные здесь или через Telegram — попадут в эту книгу.",
   "historyDeletedItem": "Удалено · {label}",
-
   "statsTitle": "Статистика",
   "statsNoDataTitle": "Нет данных за {month}",
   "statsNoIncomeMessage": "В этом месяце доходов не было.",
@@ -51,7 +45,6 @@
   "statsSpentLabel": "ПОТРАЧЕНО",
   "statsLastMonths": "{count, plural, one{Последний месяц} few{Последние {count} месяца} many{Последние {count} месяцев} other{Последние {count} месяца}}",
   "statsSharePercent": "{percent}% · {emoji}",
-
   "categoriesTitle": "Категории",
   "categoriesEmptyTitle": "Категорий нет",
   "categoriesEmptyMessage": "Добавьте первую, чтобы навести порядок.",
@@ -64,7 +57,6 @@
   "categoryArchive": "В архив",
   "categoryArchiveConfirmTitle": "Убрать категорию в архив?",
   "categoryArchiveConfirmMessage": "«{name}» исчезнет из списков выбора. Существующие операции её сохранят.",
-
   "entryNewTitle": "Новая запись",
   "entryEditTitle": "Изменить запись",
   "entryNoteHint": "Добавить заметку",
@@ -72,10 +64,8 @@
   "entryAddIncome": "Добавить доход",
   "entryAddExpense": "Добавить расход",
   "entryDeleted": "Удалено {amount}",
-
   "transactionUncategorized": "Без категории",
   "sourceTelegram": "Telegram",
-
   "settingsTitle": "Настройки",
   "settingsSyncSection": "Синхронизация",
   "settingsPreferencesSection": "Параметры",
@@ -90,7 +80,6 @@
   "settingsLanguageSystem": "Системный",
   "settingsVersion": "v{version}",
   "settingsAboutBody": "Учёт денег, который живёт на вашем устройстве, синхронизируется через ваш собственный Google Диск и принимает записи от вашего Telegram-бота. Данные не покидают ваши аккаунты.",
-
   "syncIndicatorSyncing": "Синхронизация",
   "syncIndicatorOffline": "Нет сети",
   "syncIndicatorIssue": "Сбой синхронизации",
@@ -110,7 +99,6 @@
   "syncNowButton": "Синхронизировать",
   "syncedSnack": "Синхронизировано",
   "syncFailedSnack": "Синхронизация не удалась — смотрите статус выше",
-
   "driveStandaloneNotice": "Автономный режим — всё работает офлайн на этом устройстве. Подключите Google Диск, чтобы синхронизироваться с Telegram-ботом; данные останутся на вашем Диске в виде читаемого JSON.",
   "driveNoClientNotice": "В этой сборке нет клиента Google OAuth. Пересоберите с --dart-define=GOOGLE_CLIENT_ID=… и --dart-define=GOOGLE_CLIENT_SECRET=…, чтобы включить синхронизацию с Диском.",
   "driveConnectButton": "Подключить Google Диск",
@@ -132,7 +120,6 @@
   "authErrorDenied": "Вы отклонили запрос в Google.",
   "authErrorExpired": "Срок действия кода истёк — попробуйте снова.",
   "authErrorNetwork": "Нет связи с Google — проверьте сеть.",
-
   "seedCategoryGroceries": "Продукты",
   "seedCategoryCafe": "Кафе",
   "seedCategoryTransport": "Транспорт",
@@ -148,7 +135,6 @@
   "seedCategoryFreelance": "Фриланс",
   "seedCategoryGifts": "Подарки",
   "seedCategoryOtherIncome": "Прочий доход",
-
   "currencyUSD": "Доллар США",
   "currencyEUR": "Евро",
   "currencyGBP": "Фунт стерлингов",
@@ -176,5 +162,20 @@
   "currencyZAR": "Южноафриканский ранд",
   "currencyRUB": "Российский рубль",
   "currencyUZS": "Узбекский сум",
-  "currencyKZT": "Казахстанский тенге"
+  "currencyKZT": "Казахстанский тенге",
+  "periodDay": "День",
+  "periodMonth": "Месяц",
+  "periodSwitchToDay": "Показывать по дням",
+  "periodSwitchToMonth": "Показывать весь месяц",
+  "homeNetToday": "ИТОГ ЗА ДЕНЬ",
+  "homeNetForDay": "ИТОГ · {date}",
+  "homeNothingSpentDayTitle": "За день ничего не потрачено",
+  "homeNothingSpentDayMessage": "Спокойный день для кошелька.",
+  "homeDayEntriesSection": "Записи",
+  "seedAccountCash": "Наличные",
+  "seedAccountCard": "Карта",
+  "seedAccountSavings": "Накопления",
+  "seedAccountInvestments": "Инвестиции",
+  "transactionTransfer": "Перевод",
+  "transactionTransferRoute": "{from} → {to}"
 }

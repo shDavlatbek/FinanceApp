@@ -15,7 +15,7 @@ import '../common/cards.dart';
 import '../common/count_up_amount.dart';
 import '../common/empty_state.dart';
 import '../common/kind_pill.dart';
-import '../common/month_switcher.dart';
+import '../common/period_switcher.dart';
 import 'package:tally/data/providers.dart';
 
 class StatsScreen extends ConsumerStatefulWidget {
@@ -33,13 +33,13 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context).textTheme;
     final l10n = context.l10n;
-    final locale = context.localeTag;
     final currency = ref.watch(currencyProvider).value ?? defaultCurrency;
     final totals = ref.watch(categoryTotalsByKindProvider(_kind)).value ??
         const <CategoryTotal>[];
-    final six =
-        ref.watch(lastSixMonthsProvider).value ?? const <MonthTotals>[];
-    final month = ref.watch(selectedMonthProvider);
+    final mode = ref.watch(periodModeProvider);
+    final trend =
+        ref.watch(trendProvider).value ?? const <PeriodTotals>[];
+    final periodStart = ref.watch(selectedPeriodStartProvider);
 
     final selected =
         _selected != null && _selected! < totals.length ? _selected : null;
@@ -53,7 +53,9 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
         children: [
           Text(l10n.statsTitle, style: theme.titleLarge),
           const SizedBox(height: 14),
-          const Center(child: MonthSwitcher()),
+          const Center(child: PeriodSwitcher()),
+          const SizedBox(height: 10),
+          const Center(child: PeriodModeToggle()),
           const SizedBox(height: 18),
           KindPill(
             value: _kind,
@@ -67,7 +69,8 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
             EmptyState(
               emoji: _kind == Kind.income ? '💼' : '🍩',
               title: l10n.statsNoDataTitle(
-                  month: monthLabel(month, locale: locale)),
+                  month: periodLabel(context,
+                      mode: mode, start: periodStart)),
               message: _kind == Kind.income
                   ? l10n.statsNoIncomeMessage
                   : l10n.statsNoSpendingMessage,
@@ -102,13 +105,20 @@ class _StatsScreenState extends ConsumerState<StatsScreen> {
           TallyCard(
             padding: const EdgeInsets.fromLTRB(14, 20, 14, 12),
             child: _TrendBars(
-              months: six,
+              periods: trend,
+              mode: mode,
               currency: currency,
-              selectedMonth: month,
-              onSelect: (m) {
+              selectedStart: periodStart,
+              onSelect: (start) {
                 HapticFeedback.selectionClick();
-                ref.read(selectedMonthProvider.notifier).state =
-                    monthStart(m);
+                switch (mode) {
+                  case PeriodMode.day:
+                    ref.read(selectedDayProvider.notifier).state =
+                        dayStart(start);
+                  case PeriodMode.month:
+                    ref.read(selectedMonthProvider.notifier).state =
+                        monthStart(start);
+                }
               },
             ),
           ),
@@ -335,16 +345,25 @@ class _Legend extends StatelessWidget {
 
 class _TrendBars extends StatefulWidget {
   const _TrendBars({
-    required this.months,
+    required this.periods,
+    required this.mode,
     required this.currency,
-    required this.selectedMonth,
+    required this.selectedStart,
     required this.onSelect,
   });
 
-  final List<MonthTotals> months;
+  /// Six months in the month lens, fourteen days in the day lens.
+  final List<PeriodTotals> periods;
+  final PeriodMode mode;
   final String currency;
-  final DateTime selectedMonth;
+  final DateTime selectedStart;
   final ValueChanged<DateTime> onSelect;
+
+  /// `true` when [a] is the period the rest of the screen is showing.
+  bool isSelected(DateTime a) => switch (mode) {
+        PeriodMode.day => isSameDay(a, selectedStart),
+        PeriodMode.month => isSameMonth(a, selectedStart),
+      };
 
   @override
   State<_TrendBars> createState() => _TrendBarsState();
@@ -371,7 +390,7 @@ class _TrendBarsState extends State<_TrendBars> {
 
     double major(int minor) => minor / per;
     var maxVal = 0.0;
-    for (final m in widget.months) {
+    for (final m in widget.periods) {
       if (major(m.incomeMinor) > maxVal) maxVal = major(m.incomeMinor);
       if (major(m.expenseMinor) > maxVal) maxVal = major(m.expenseMinor);
     }
@@ -406,16 +425,20 @@ class _TrendBarsState extends State<_TrendBars> {
                     reservedSize: 26,
                     getTitlesWidget: (value, meta) {
                       final i = value.toInt();
-                      if (i < 0 || i >= widget.months.length) {
+                      if (i < 0 || i >= widget.periods.length) {
                         return const SizedBox.shrink();
                       }
-                      final m = widget.months[i].month;
-                      final active =
-                          isSameMonth(m, widget.selectedMonth);
+                      final m = widget.periods[i].start;
+                      final active = widget.isSelected(m);
+                      // Fourteen day-of-month numbers fit where fourteen
+                      // month names would not.
+                      final label = widget.mode == PeriodMode.day
+                          ? '${m.day}'
+                          : shortMonthLabel(m, locale: locale);
                       return Padding(
                         padding: const EdgeInsets.only(top: 8),
                         child: Text(
-                          shortMonthLabel(m, locale: locale),
+                          label,
                           style: theme.labelMedium!.copyWith(
                             color: active
                                 ? t.textPrimary
@@ -436,13 +459,13 @@ class _TrendBarsState extends State<_TrendBars> {
                 touchCallback: (event, response) {
                   if (event is! FlTapUpEvent) return;
                   final i = response?.spot?.touchedBarGroupIndex;
-                  if (i != null && i >= 0 && i < widget.months.length) {
-                    widget.onSelect(widget.months[i].month);
+                  if (i != null && i >= 0 && i < widget.periods.length) {
+                    widget.onSelect(widget.periods[i].start);
                   }
                 },
               ),
               barGroups: [
-                for (final (i, m) in widget.months.indexed)
+                for (final (i, m) in widget.periods.indexed)
                   BarChartGroupData(
                     x: i,
                     barsSpace: 3,
@@ -452,9 +475,7 @@ class _TrendBarsState extends State<_TrendBars> {
                         width: 9,
                         borderRadius: BorderRadius.circular(3),
                         color: t.textPrimary.withValues(
-                          alpha: isSameMonth(m.month, widget.selectedMonth)
-                              ? 0.9
-                              : 0.38,
+                          alpha: widget.isSelected(m.start) ? 0.9 : 0.38,
                         ),
                       ),
                       BarChartRodData(
@@ -462,9 +483,7 @@ class _TrendBarsState extends State<_TrendBars> {
                         width: 9,
                         borderRadius: BorderRadius.circular(3),
                         color: t.accent.withValues(
-                          alpha: isSameMonth(m.month, widget.selectedMonth)
-                              ? 1.0
-                              : 0.38,
+                          alpha: widget.isSelected(m.start) ? 1.0 : 0.38,
                         ),
                       ),
                     ],

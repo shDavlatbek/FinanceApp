@@ -14,6 +14,7 @@ library;
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer' as developer;
 import 'dart:io' show Platform, SocketException;
 
 import 'package:drift/drift.dart';
@@ -409,11 +410,20 @@ class DriveSyncEngine {
         }
         final List<int> bytes = await client.download(f.id);
         try {
-          incoming.add(TallySnapshot.decode(bytes));
+          final TallySnapshot snap = TallySnapshot.decode(bytes);
+          // Rows the sanitizer dropped. Reported, never silent: the owner can
+          // hand-edit these files, and a row that quietly vanished would look
+          // exactly like a sync that never happened.
+          for (final String why in snap.skipped) {
+            developer.log('${f.name}: skipped $why', name: 'drive');
+          }
+          incoming.add(snap);
           if (md5 != null) nextMd5[f.id] = md5;
-        } on SnapshotFormatException {
-          // Corrupt or future-schema peer: skip it and do NOT cache its md5,
-          // so a later fixed version is picked up.
+        } on SnapshotFormatException catch (e) {
+          // Corrupt or future-schema peer: skip the FILE and do NOT cache its
+          // md5, so a later fixed version is picked up. Individual bad rows do
+          // not reach here — they are sanitized away per row above.
+          developer.log('skipping ${f.name}: ${e.message}', name: 'drive');
         }
       }
 
@@ -429,6 +439,7 @@ class DriveSyncEngine {
           deviceId: device.id,
           deviceName: device.name,
           writtenAtMs: _now(),
+          accounts: local.accounts,
           categories: local.categories,
           transactions: local.transactions,
           settings: local.settings,
@@ -545,6 +556,16 @@ class DriveSyncEngine {
   Future<void> _merge(List<TallySnapshot> snapshots) async {
     await _db.transaction(() async {
       for (final TallySnapshot s in snapshots) {
+        // Accounts first: a transaction naming a brand-new account should not
+        // be able to land in a pass where the account itself has not arrived.
+        for (final Account incoming in s.accounts) {
+          final Account? existing = await (_db.select(_db.accounts)
+                ..where((a) => a.id.equals(incoming.id)))
+              .getSingleOrNull();
+          if (existing == null || incoming.updatedAtMs > existing.updatedAtMs) {
+            await _db.into(_db.accounts).insertOnConflictUpdate(incoming);
+          }
+        }
         for (final Category incoming in s.categories) {
           final Category? existing = await (_db.select(_db.categories)
                 ..where((c) => c.id.equals(incoming.id)))
@@ -568,9 +589,20 @@ class DriveSyncEngine {
               .getSingleOrNull();
           if (existing == null ||
               incomingSettings.updatedAtMs > existing.updatedAtMs) {
-            await _db
-                .into(_db.settings)
-                .insertOnConflictUpdate(incomingSettings);
+            // An empty default_account_id means "unchanged", never "cleared":
+            // a peer predating accounts sends the field absent, and taking
+            // that literally would strip an account the owner deliberately
+            // picked in the app. Fall back to the seed account only when
+            // there is no local value at all.
+            final SettingsRow merged = incomingSettings.defaultAccountId.isEmpty
+                ? incomingSettings.copyWith(
+                    defaultAccountId:
+                        (existing != null && existing.defaultAccountId.isNotEmpty)
+                            ? existing.defaultAccountId
+                            : defaultAccountId,
+                  )
+                : incomingSettings;
+            await _db.into(_db.settings).insertOnConflictUpdate(merged);
           }
         }
       }
@@ -578,19 +610,27 @@ class DriveSyncEngine {
   }
 
   Future<_LocalState> _readLocalState() async {
+    final List<Account> accounts = await _db.select(_db.accounts).get();
     final List<Category> categories = await _db.select(_db.categories).get();
     final List<Transaction> transactions =
         await _db.select(_db.transactions).get();
     final SettingsRow? settings = await (_db.select(_db.settings)
           ..where((r) => r.id.equals(settingsRowId)))
         .getSingleOrNull();
-    return _LocalState(categories, transactions, settings);
+    return _LocalState(accounts, categories, transactions, settings);
   }
 
   /// Step 7 — clears `dirty` on exactly the rows that were serialized, and
   /// only while their `updated_at_ms` still matches.
   Future<void> _clearDirty(_LocalState local) async {
     await _db.transaction(() async {
+      for (final Account a in local.accounts) {
+        if (!a.dirty) continue;
+        await (_db.update(_db.accounts)
+              ..where((r) =>
+                  r.id.equals(a.id) & r.updatedAtMs.equals(a.updatedAtMs)))
+            .write(const AccountsCompanion(dirty: Value(false)));
+      }
       for (final Category c in local.categories) {
         if (!c.dirty) continue;
         await (_db.update(_db.categories)
@@ -623,6 +663,9 @@ class DriveSyncEngine {
       if (dropFolderId) await _db.deleteMeta(MetaKeys.driveFolderId);
       await _db.deleteMeta(MetaKeys.drivePeerMd5);
       await _db.deleteMeta(MetaKeys.lastSyncMs);
+      await _db
+          .update(_db.accounts)
+          .write(const AccountsCompanion(dirty: Value(true)));
       await _db
           .update(_db.categories)
           .write(const CategoriesCompanion(dirty: Value(true)));
@@ -674,13 +717,16 @@ class DriveSyncEngine {
 }
 
 class _LocalState {
-  const _LocalState(this.categories, this.transactions, this.settings);
+  const _LocalState(
+      this.accounts, this.categories, this.transactions, this.settings);
 
+  final List<Account> accounts;
   final List<Category> categories;
   final List<Transaction> transactions;
   final SettingsRow? settings;
 
   bool get hasDirty =>
+      accounts.any((Account a) => a.dirty) ||
       categories.any((Category c) => c.dirty) ||
       transactions.any((Transaction t) => t.dirty) ||
       (settings?.dirty ?? false);

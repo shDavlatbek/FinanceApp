@@ -47,6 +47,10 @@ extension L10nX on BuildContext {
   /// has not renamed it.
   String categoryName({required String id, required String name}) =>
       localizedCategoryName(l10n, id: id, name: name);
+
+  /// Display name for an account, applying the same seed-name rule.
+  String accountName({required String id, required String name}) =>
+      localizedAccountName(l10n, id: id, name: name);
 }
 
 /// Translated text for one of the 15 seed-category ARB keys, or null when the
@@ -81,6 +85,29 @@ String localizedCategoryName(
       id: id,
       name: name,
       localize: (String key) => seedCategoryLabel(l10n, key),
+    );
+
+/// Translated text for one of the four seed-account ARB keys, or null when the
+/// key is unknown (which makes [accountDisplayName] fall back to canonical
+/// English).
+String? seedAccountLabel(AppLocalizations l10n, String key) => switch (key) {
+      'seedAccountCash' => l10n.seedAccountCash,
+      'seedAccountCard' => l10n.seedAccountCard,
+      'seedAccountSavings' => l10n.seedAccountSavings,
+      'seedAccountInvestments' => l10n.seedAccountInvestments,
+      _ => null,
+    };
+
+/// `displayName(a)` from docs/ARCHITECTURE.md § Seed account naming.
+String localizedAccountName(
+  AppLocalizations l10n, {
+  required String id,
+  required String name,
+}) =>
+    accountDisplayName(
+      id: id,
+      name: name,
+      localize: (String key) => seedAccountLabel(l10n, key),
     );
 
 /// Human name of an ISO-4217 code for the currency picker; falls back to the

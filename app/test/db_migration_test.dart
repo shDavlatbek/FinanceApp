@@ -56,6 +56,54 @@ const List<String> _v1Schema = <String>[
   )''',
 ];
 
+/// Exactly the tables drift generated for schemaVersion 2 — `settings` has
+/// `language` but there is no `accounts` table and no account columns.
+const List<String> _v2Schema = <String>[
+  '''
+  CREATE TABLE transactions (
+    id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    amount_minor INTEGER NOT NULL,
+    category_id TEXT NOT NULL,
+    note TEXT NOT NULL DEFAULT '',
+    occurred_at TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'app',
+    created_at_ms INTEGER NOT NULL,
+    updated_at_ms INTEGER NOT NULL,
+    deleted_at_ms INTEGER NULL,
+    dirty INTEGER NOT NULL DEFAULT 0 CHECK (dirty IN (0, 1)),
+    PRIMARY KEY (id)
+  )''',
+  '''
+  CREATE TABLE categories (
+    id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    emoji TEXT NOT NULL,
+    color TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    updated_at_ms INTEGER NOT NULL,
+    deleted_at_ms INTEGER NULL,
+    dirty INTEGER NOT NULL DEFAULT 0 CHECK (dirty IN (0, 1)),
+    PRIMARY KEY (id)
+  )''',
+  '''
+  CREATE TABLE settings (
+    id TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    language TEXT NOT NULL DEFAULT '',
+    updated_at_ms INTEGER NOT NULL,
+    dirty INTEGER NOT NULL DEFAULT 0 CHECK (dirty IN (0, 1)),
+    PRIMARY KEY (id)
+  )''',
+  '''
+  CREATE TABLE meta (
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    PRIMARY KEY (key)
+  )''',
+];
+
 void main() {
   test('a v1 database upgrades to v2 without losing user data', () async {
     final AppDatabase db = AppDatabase(NativeDatabase.memory(setup: (rawDb) {
@@ -129,12 +177,94 @@ void main() {
     expect((await db.select(db.settings).getSingle()).language, 'uz');
   });
 
-  test('a fresh database is created at v2 with the language column', () async {
+  test('a v2 database upgrades to v3, gaining accounts', () async {
+    final AppDatabase db = AppDatabase(NativeDatabase.memory(setup: (rawDb) {
+      for (final String statement in _v2Schema) {
+        rawDb.execute(statement);
+      }
+      rawDb.execute(
+        "INSERT INTO categories VALUES ('$_groceriesId', 'Groceries', '🛒', "
+        "'#4CAF7D', 'expense', 0, $seedUpdatedAtMs, NULL, 0)",
+      );
+      rawDb.execute(
+        "INSERT INTO transactions VALUES ('tx-old', 'expense', 24850, "
+        "'$_groceriesId', 'weekly shop', '2026-08-01T10:00:00Z', 'app', "
+        '1755000001000, 1755000001000, NULL, 0)',
+      );
+      // A settings row still carrying the OLD seed timestamp: the placeholder
+      // that could never move under strict LWW.
+      rawDb.execute(
+        "INSERT INTO settings VALUES ('settings', 'UZS', 'ru', "
+        '$seedUpdatedAtMs, 0)',
+      );
+      rawDb.userVersion = 2;
+    }));
+    addTearDown(db.close);
+
+    // The seed accounts arrive on upgrade, not just on a fresh install.
+    final List<Account> accounts = await db.select(db.accounts).get();
+    expect(accounts, hasLength(seedAccounts.length));
+    expect(accounts.map((Account a) => a.id), contains(defaultAccountId));
+
+    // The pre-accounts transaction keeps every byte and books to cash —
+    // exactly what the server's migration independently decides, so the two
+    // peers converge without either publishing anything.
+    final Transaction tx = await db.select(db.transactions).getSingle();
+    expect(tx.id, 'tx-old');
+    expect(tx.amountMinor, 24850);
+    expect(tx.note, 'weekly shop');
+    expect(tx.accountId, defaultAccountId);
+    expect(tx.toAccountId, isEmpty);
+    expect(tx.updatedAtMs, 1755000001000); // NOT bumped
+    expect(tx.dirty, isFalse); // and NOT republished
+
+    final SettingsRow settings = await db.select(db.settings).getSingle();
+    expect(settings.currency, 'UZS'); // preserved
+    expect(settings.language, 'ru'); // preserved
+    expect(settings.defaultAccountId, defaultAccountId);
+    // The stuck placeholder is unstuck, so currency and language can finally
+    // move between the peers instead of being frozen by a tie.
+    expect(settings.updatedAtMs, settingsUnsetMs);
+
+    // The widened `kind` accepts a transfer now.
+    await db.into(db.transactions).insert(Transaction(
+          id: 'tx-transfer',
+          kind: Kind.transfer,
+          amountMinor: 5000,
+          categoryId: '',
+          accountId: defaultAccountId,
+          toAccountId: 'a1c7e2f0-0003-4a00-9000-000000000003',
+          note: '',
+          occurredAt: '2026-08-20T10:00:00Z',
+          source: TxSource.app,
+          createdAtMs: 1755000002000,
+          updatedAtMs: 1755000002000,
+          deletedAtMs: null,
+          dirty: true,
+        ));
+    expect(await db.select(db.transactions).get(), hasLength(2));
+  });
+
+  test('a fresh database is created at v3 with accounts', () async {
     final AppDatabase db = AppDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     final SettingsRow settings = await db.select(db.settings).getSingle();
     expect(settings.language, defaultLanguage);
-    expect(db.schemaVersion, 2);
+    expect(settings.defaultAccountId, defaultAccountId);
+    expect(db.schemaVersion, 3);
+
+    // The seed accounts are part of the contract: savings and investments
+    // must exist out of the box so "send to savings" works with no setup.
+    final List<Account> accounts = await db.select(db.accounts).get();
+    expect(accounts, hasLength(seedAccounts.length));
+    expect(
+      accounts.map((Account a) => a.id).toSet(),
+      seedAccounts.map((SeedAccount a) => a.id).toSet(),
+    );
+    expect(accounts.every((Account a) => a.updatedAtMs == seedUpdatedAtMs),
+        isTrue);
+    // Both peers seed byte-identical accounts, so there is nothing to publish.
+    expect(accounts.every((Account a) => a.dirty), isFalse);
   });
 }
 

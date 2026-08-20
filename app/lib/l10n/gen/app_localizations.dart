@@ -1077,6 +1077,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Kazakhstani Tenge'**
   String get currencyKZT;
+
+  /// Segmented toggle: show a single day on Home/Stats.
+  ///
+  /// In en, this message translates to:
+  /// **'Day'**
+  String get periodDay;
+
+  /// Segmented toggle: show a whole month on Home/Stats.
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get periodMonth;
+
+  /// Accessibility label for the day segment of the period toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show one day at a time'**
+  String get periodSwitchToDay;
+
+  /// Accessibility label for the month segment of the period toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the whole month'**
+  String get periodSwitchToMonth;
+
+  /// Home hero caption when the day lens shows today.
+  ///
+  /// In en, this message translates to:
+  /// **'NET TODAY'**
+  String get homeNetToday;
+
+  /// Home hero caption for a specific day in the day lens.
+  ///
+  /// In en, this message translates to:
+  /// **'NET · {date}'**
+  String homeNetForDay({required String date});
+
+  /// Empty state title when a day has no spending.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing spent today'**
+  String get homeNothingSpentDayTitle;
+
+  /// Empty state message when a day has no spending.
+  ///
+  /// In en, this message translates to:
+  /// **'A quiet day for your wallet.'**
+  String get homeNothingSpentDayMessage;
+
+  /// Section header above the day's transactions.
+  ///
+  /// In en, this message translates to:
+  /// **'Entries'**
+  String get homeDayEntriesSection;
+
+  /// Seed account name, shown only while unrenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash'**
+  String get seedAccountCash;
+
+  /// Seed account name, shown only while unrenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Card'**
+  String get seedAccountCard;
+
+  /// Seed account name, shown only while unrenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings'**
+  String get seedAccountSavings;
+
+  /// Seed account name, shown only while unrenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Investments'**
+  String get seedAccountInvestments;
+
+  /// Title of a transfer row in a transaction list.
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer'**
+  String get transactionTransfer;
+
+  /// Subtitle of a transfer row: the two accounts it moves between.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} → {to}'**
+  String transactionTransferRoute({required String from, required String to});
 }
 
 class _AppLocalizationsDelegate

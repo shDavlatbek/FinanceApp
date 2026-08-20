@@ -35,12 +35,18 @@ Transaction _transaction({
   int updatedAtMs = 5000,
   int? deletedAtMs,
   bool dirty = false,
+  String kind = Kind.expense,
+  String categoryId = 'c1a7e2f0-0001-4a00-9000-000000000001',
+  String accountId = defaultAccountId,
+  String toAccountId = '',
 }) =>
     Transaction(
       id: id,
-      kind: Kind.expense,
+      kind: kind,
       amountMinor: 25000,
-      categoryId: 'c1a7e2f0-0001-4a00-9000-000000000001',
+      categoryId: categoryId,
+      accountId: accountId,
+      toAccountId: toAccountId,
       note: note,
       occurredAt: '2026-08-19T10:00:00Z',
       source: TxSource.telegram,
@@ -63,6 +69,7 @@ void main() {
           id: settingsRowId,
           currency: 'EUR',
           language: 'ru',
+          defaultAccountId: defaultAccountId,
           updatedAtMs: 7000,
           dirty: true,
         ),
@@ -74,6 +81,7 @@ void main() {
         'device_id',
         'device_name',
         'written_at_ms',
+        'accounts',
         'categories',
         'transactions',
         'settings',
@@ -103,6 +111,8 @@ void main() {
         'kind',
         'amount_minor',
         'category_id',
+        'account_id',
+        'to_account_id',
         'note',
         'occurred_at',
         'source',
@@ -117,6 +127,7 @@ void main() {
         'id': 'settings',
         'currency': 'EUR',
         'language': 'ru',
+        'default_account_id': defaultAccountId,
         'updated_at_ms': 7000,
       });
 
@@ -198,15 +209,28 @@ void main() {
         }))),
         throwsA(isA<SnapshotFormatException>()),
       );
-      expect(
-        () => TallySnapshot.decode(utf8.encode(jsonEncode(<String, Object?>{
-          'schema': 1,
-          'categories': <Object?>[
-            <String, Object?>{'id': 'x'} // missing name/kind/updated_at_ms
-          ],
-        }))),
-        throwsA(isA<SnapshotFormatException>()),
-      );
+    });
+
+    // A peer file is hand-editable, so one bad ROW must not cost the whole
+    // file. The envelope still throws; rows are skipped and reported, exactly
+    // as the Go peer does.
+    test('skips a malformed row instead of discarding the whole snapshot', () {
+      final TallySnapshot snap =
+          TallySnapshot.decode(utf8.encode(jsonEncode(<String, Object?>{
+        'schema': snapshotSchemaVersion,
+        'categories': <Object?>[
+          <String, Object?>{'id': 'x'}, // missing name/kind/updated_at_ms
+          categoryToJson(_category()),
+        ],
+        'transactions': <Object?>[transactionToJson(_transaction())],
+      })));
+
+      // The good rows survived...
+      expect(snap.categories, hasLength(1));
+      expect(snap.transactions, hasLength(1));
+      // ...and the bad one was reported rather than silently dropped.
+      expect(snap.skipped, hasLength(1));
+      expect(snap.skipped.single, contains('category'));
     });
 
     test('file name follows tally-<device_id>.json', () {

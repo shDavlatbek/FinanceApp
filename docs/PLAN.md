@@ -1,38 +1,73 @@
 # Tally — build status
 
-## v3 (accounts + export/import) — IN PROGRESS, server side done
+## v3 (accounts + transfers + day lens) — app and server both built
 
-Requested by the owner on 2026-08-20: accounts (cash / card / savings / investments),
-"send to savings" and "send to investments" as transfers, and export/import to a file.
-See the v3 amendment in `SPEC.md` and the v3 note in `ARCHITECTURE.md`.
+Requested by the owner on 2026-08-20: accounts (cash / card / savings /
+investments), "send to savings" / "send to investments" as transfers,
+export/import to a file, and a Day / Month lens for inspecting daily spending.
 
-**Done and verified (Go server + shared contract):**
+### Verified on 2026-08-20 (run directly against the tree)
 
 | check | result |
 |---|---|
-| `go vet ./...` · `go build ./...` · `go test -count=1 ./...` | clean; api, bot, drive, i18n, store all pass |
-| accounts table, seed accounts, derived balances | new `accounts_test.go`, 8 tests |
-| pre-accounts DB migration (transactions table rebuild) | verified: rows keep their data, book to cash, `transfer` inserts, indexes recreated |
-| transfers excluded from summaries | pinned by `TestTransfersStayOutOfSummaries` |
-| snapshot schema 2 + accounts on the wire | interop fixture regenerated, Go half updated |
-| schema-1 snapshots still readable | new `snapshot.v1.example.json` + `TestInteropV1FixtureStillReadable` |
-| `/accounts` bot command in en/ru/uz | new `internal/bot/accounts_test.go` |
+| `go vet ./...` · `go build ./...` · `go test -count=1 ./...` | clean |
+| `flutter analyze` | **0 issues** |
+| `flutter test` | **187 pass**, 4 skipped (capture harness) |
+| snapshot interop fixture, Go side | parse, round trip, sanitizing path, schema-1 fallback |
+| snapshot interop fixture, Dart side | same fixture, same expected values, plus the v1 fixture |
+| v2 → v3 drift migration | rows keep their data, book to cash, `transfer` inserts |
+| pre-accounts SQLite migration (Go) | transactions table rebuilt, indexes recreated |
 
-**Not done — blocked.** The whole Flutter half: accounts UI, transfers in the entry
-sheet, export/import screens, the drift migration, the Dart side of snapshot schema 2,
-and the Dart half of the interop fixture. `app/lib/data/` (drift database,
-repositories, Drive sync engine) is **not in the repository** — the root `.gitignore`
-matched `data/` at any depth and silently excluded it, so a fresh clone cannot build
-the app. The pattern is fixed (anchored to `/data/`), but the files themselves still
-have to be committed from the machine that has them.
+### Bugs found by adversarial review and fixed
 
-Consequence to watch: **the fixture now carries schema 2 while the Dart side still
-expects schema 1**, so `app/test/snapshot_interop_test.dart` will fail until the Dart
-half is updated. That is the contract-first order the repo mandates, not an accident —
-but it does mean the app tests are red in the interim.
+A 30-agent review pass over the Go/Dart integration produced 45 candidate
+findings; each was independently verified by a skeptic before being acted on,
+which refuted most of them as stale (the reviewers were reading a tree that was
+being edited underneath them). The ones that survived were real:
 
-Also unverified here: `flutter analyze` and `flutter test` were **not** run this round.
-Flutter is not installed in the environment the server work was done in.
+- **Drive sync never merged peer accounts.** `Snapshot.Batch()` parsed and
+  sanitized them, `MergeRemote` knew how to apply them, and the single line
+  carrying them between the two was missing. Nothing failed loudly: the settings
+  row naming a new account merged fine, `DefaultAccount()` silently fell back to
+  cash, and the bot booked every entry to the wrong account forever. Regression
+  test `TestSyncMergesPeerAccounts` fails without the fix.
+- **The sanitizer could manufacture the row it rejects.** The unknown-account
+  rewrite ran *after* the self-transfer check, so a transfer with a missing
+  source and a cash destination became `cash -> cash`.
+- **A self-transfer invented money.** The balance query used one first-match
+  `CASE`, so the credit arm matched and the debit arm was never reached. Now
+  four summed terms, which net to zero.
+- **`CategoryPeriodTotal` counted transfers**, and it feeds the reply the owner
+  reads after every single entry.
+- **One bad account row cost the peer its currency and language**, because an
+  unknown `default_account_id` skipped the whole settings row.
+- **The Dart peer discarded an entire snapshot over one malformed row**, where
+  Go skips just that row — so a single stray comma typed in the Drive UI would
+  have silently frozen sync while still reporting "synced".
+- **The Dart peer seeded `settings.updated_at_ms` at `1755000000000`** instead
+  of the `0` sentinel, so a fresh app silently overwrote the server's
+  `DEFAULT_CURRENCY` — a 100x misread on a 0-decimal currency like UZS. Fixed
+  with a migration that unsticks existing installs, mirroring the server's.
+- **Transfers leaked into the display layer**: history day subtotals subtracted
+  them as spending, and a transfer rendered as a green `+` labelled
+  "Uncategorized".
+
+### Not done
+
+- **Accounts screen** (add / edit / archive / reorder, opening balance) and the
+  **transfer flow in the entry sheet**. The data layer, sync, balances and
+  rendering are all in place and tested; what is missing is the UI to create a
+  transfer from the app. Transfers arriving from a peer are handled correctly.
+- **Export / import screens.** The format, semantics and merge rule are settled
+  in the contract (a backup file IS a snapshot file, import is a last-write-wins
+  merge) and the whole parse/sanitize/merge path they reuse is built and tested;
+  the file-picker UI and CSV writer are not.
+- **No real Google Drive round trip has ever happened**, and the Telegram bot
+  has never talked to Telegram. Both are still tested only against in-memory
+  fakes.
+- Release APK: `app/android/app/build.gradle.kts` still signs release with the
+  **debug** key (`// TODO: Add your own signing config`). Needs a keystore
+  before an APK means anything.
 
 ## v2 — verified 2026-08-20
 

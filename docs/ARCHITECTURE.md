@@ -149,7 +149,7 @@ Savings and investments are seeded rather than left to the user because "send to
 
 ### Seed account naming (i18n)
 
-Identical to the category rule below, with `acc_*` catalog keys instead of `cat_*`:
+Identical to the category rule below. The bot's catalog keys are `acc_*`; the app's ARB keys are `seedAccount*` (`seedAccountCash`, `seedAccountCard`, `seedAccountSavings`, `seedAccountInvestments`). Both peers must localize the same rows to the same names, or the phone and the bot will call one seed account two different things:
 
 ```
 displayName(a) = (isSeedAccountId(a.id) && a.name == canonicalSeedAccountName(a.id))
@@ -224,7 +224,17 @@ Sanitizing rules specific to accounts, applied to every peer file because it is 
 - an account with an empty id or name, a malformed `color`, a `kind` outside the four, or `updated_at_ms <= 0` is skipped;
 - a transfer with no `to_account_id`, with `to_account_id == account_id`, or naming an account not present in that snapshot is skipped — a self-transfer nets to zero yet still shows money moving, and is only ever a hand-edit mistake;
 - `to_account_id` set on an income or an expense is **cleared**, not skipped: the balance rule only reads that field on a transfer, so the row is still good data and dropping a real expense over an ignored field would be the worse bug;
-- an unknown or absent `account_id` is rewritten to the seed cash account rather than dropping the transaction, because losing an entry is worse than misfiling one.
+- a `category_id` set on a **transfer** is likewise cleared, not fatal — the row is a real movement of money, it simply must not reach a category total;
+- an unknown or absent `account_id` is rewritten to the seed cash account rather than dropping the transaction, because losing an entry is worse than misfiling one;
+- an unknown `default_account_id` on the settings row is **cleared** (which already means "unchanged"), never a reason to drop the row — otherwise one bad account row elsewhere in the file would cost the peer its currency and language too.
+
+**Order is load-bearing.** The `account_id` rewrite runs **before** the transfer rules. The other way round, a transfer whose source account is missing and whose destination is the seed cash account gets rewritten into `cash -> cash`: precisely the self-transfer the rules reject, waved through because the check had already run.
+
+**Both peers sanitize per ROW, never per file.** A malformed row is dropped and reported; only an unreadable *envelope* (not JSON, no `schema`, a schema outside the readable range) rejects the whole file. The owner can hand-edit these files in the Drive UI, and one stray comma must not silently cost them every other row.
+
+**`occurred_at` is validated on read, normalized on write.** A reader checks that it parses and otherwise leaves the bytes alone: Dart's `toIso8601String()` emits `…T09:30:00.000Z` where Go writes `…T09:30:00Z`, so re-normalizing on read would have each peer rewrite the other's rows on every merge. Period queries compare against fraction-free bounds precisely so both spellings sort correctly.
+
+A **balance is computed as four independent summed terms**, never a single first-match `CASE`. With one `CASE`, a self-transfer would match the credit arm, never reach the debit arm, and invent money out of nothing. Summed, it nets to zero — so the arithmetic stays sound even for a row the sanitizer should have caught.
 
 The snapshot is a **full dump of that peer's current local state**, tombstones included. Publishing everything (rather than a delta) keeps the merge trivially idempotent and self-healing: a peer that has been offline for months still converges in one pass, and a lost snapshot file costs nothing because every other peer republishes what it knows.
 

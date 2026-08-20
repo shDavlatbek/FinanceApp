@@ -1169,11 +1169,17 @@ func (s *Store) PeriodSummary(from, to time.Time) (Summary, error) {
 
 // CategoryPeriodTotal sums non-deleted transactions of one category with
 // from <= occurred_at < to.
+//
+// Transfers are excluded explicitly rather than relying on them carrying no
+// category: a hand-edited peer file can present a transfer WITH a category_id,
+// and this total is what the bot echoes after every entry, so a stray row here
+// would show up in the reply the owner reads most often.
 func (s *Store) CategoryPeriodTotal(categoryID string, from, to time.Time) (int64, error) {
 	var total int64
 	err := s.db.QueryRow(
 		`SELECT COALESCE(SUM(amount_minor), 0) FROM transactions
-		 WHERE deleted_at_ms IS NULL AND category_id = ? AND occurred_at >= ? AND occurred_at < ?`,
+		 WHERE deleted_at_ms IS NULL AND kind <> 'transfer' AND category_id = ?
+		   AND occurred_at >= ? AND occurred_at < ?`,
 		categoryID, isoUTC(from), isoUTC(to)).Scan(&total)
 	return total, err
 }
@@ -1267,17 +1273,22 @@ type AccountBalance struct {
 // Deleted transactions are excluded; deleted accounts are not listed, but
 // money transferred into one is genuinely gone from the total, which is why
 // the app refuses to archive an account that still holds a balance.
+//
+// The four arms are SUMMED, not a first-match CASE. With a single CASE a
+// self-transfer (account_id == to_account_id, which only a hand-edited peer
+// file can produce) would match the credit arm, never reach the debit arm and
+// INVENT money out of nothing. Added independently it nets to zero, so the
+// balance stays right even for a row the sanitizer should have caught.
 func (s *Store) AccountBalances() ([]AccountBalance, error) {
 	rows, err := s.db.Query(`
 		SELECT a.id, a.name, a.kind, a.emoji, a.color, a.opening_balance_minor,
 		       a.sort_order, a.updated_at_ms,
 		       a.opening_balance_minor + COALESCE((
-		           SELECT SUM(CASE
-		               WHEN t.kind = 'income'   AND t.account_id    = a.id THEN  t.amount_minor
-		               WHEN t.kind = 'expense'  AND t.account_id    = a.id THEN -t.amount_minor
-		               WHEN t.kind = 'transfer' AND t.to_account_id = a.id THEN  t.amount_minor
-		               WHEN t.kind = 'transfer' AND t.account_id    = a.id THEN -t.amount_minor
-		               ELSE 0 END)
+		           SELECT SUM(
+		               CASE WHEN t.kind = 'income'   AND t.account_id    = a.id THEN  t.amount_minor ELSE 0 END
+		             + CASE WHEN t.kind = 'expense'  AND t.account_id    = a.id THEN -t.amount_minor ELSE 0 END
+		             + CASE WHEN t.kind = 'transfer' AND t.to_account_id = a.id THEN  t.amount_minor ELSE 0 END
+		             + CASE WHEN t.kind = 'transfer' AND t.account_id    = a.id THEN -t.amount_minor ELSE 0 END)
 		           FROM transactions t
 		           WHERE t.deleted_at_ms IS NULL
 		             AND (t.account_id = a.id OR t.to_account_id = a.id)

@@ -8,21 +8,32 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 export '../core/constants.dart'
     show
+        AccountKind,
         Kind,
+        PeriodMode,
         TxSource,
+        defaultAccountId,
         defaultCurrency,
         defaultLanguage,
+        SeedAccount,
+        seedAccounts,
         supportedLanguageCodes,
         driveFolderName;
 export '../core/seed_names.dart'
     show
-        categoryDisplayName,
+        accountDisplayName,
+        canonicalSeedAccountName,
         canonicalSeedName,
-        isSeedId,
+        categoryDisplayName,
         isRenamedSeed,
+        isSeedAccountId,
+        isSeedId,
         isUnrenamedSeed,
-        seedNameKey,
-        seedCategoryNameKeys;
+        isUnrenamedSeedAccount,
+        seedAccountNameKey,
+        seedAccountNameKeys,
+        seedCategoryNameKeys,
+        seedNameKey;
 export 'db/database.dart';
 export 'drive/device_auth.dart'
     show DeviceAuthClient, DeviceAuthException, DeviceAuthPrompt;
@@ -37,10 +48,13 @@ export 'drive/drive_sync_engine.dart'
         SyncOffline,
         SyncError,
         SyncErrorCode;
-export 'repo/summaries_repository.dart' show MonthTotals, CategoryTotal;
+export 'repo/accounts_repository.dart' show AccountBalance;
+export 'repo/summaries_repository.dart' show PeriodTotals, CategoryTotal;
+import '../core/constants.dart';
 import '../core/dates.dart';
 import 'db/database.dart';
 import 'drive/drive_sync_engine.dart';
+import 'repo/accounts_repository.dart';
 import 'repo/categories_repository.dart';
 import 'repo/settings_repository.dart';
 import 'repo/summaries_repository.dart';
@@ -109,6 +123,13 @@ final summariesRepoProvider = Provider<SummariesRepository>(
   (ref) => SummariesRepository(ref.watch(databaseProvider)),
 );
 
+final accountsRepoProvider = Provider<AccountsRepository>((ref) {
+  return AccountsRepository(
+    ref.watch(databaseProvider),
+    onMutation: ref.watch(syncEngineProvider).scheduleSync,
+  );
+});
+
 // ---- app state ---------------------------------------------------------------
 
 /// Month currently shown on Home/Stats (always the first day of a local
@@ -117,6 +138,50 @@ final summariesRepoProvider = Provider<SummariesRepository>(
 final selectedMonthProvider = StateProvider<DateTime>(
   (ref) => monthStart(DateTime.now()),
 );
+
+/// Day currently shown on Home/Stats when the lens is [PeriodMode.day]
+/// (always local midnight).
+final selectedDayProvider = StateProvider<DateTime>(
+  (ref) => dayStart(DateTime.now()),
+);
+
+/// The lens Home and Stats are showing: one day or one month. Persisted
+/// per-device in the local meta table.
+final periodModeProvider =
+    StateNotifierProvider<PeriodModeController, PeriodMode>(
+  (ref) => PeriodModeController(ref.watch(databaseProvider)),
+);
+
+class PeriodModeController extends StateNotifier<PeriodMode> {
+  PeriodModeController(this._db) : super(PeriodMode.month) {
+    _load();
+  }
+
+  final AppDatabase _db;
+
+  Future<void> _load() async {
+    final String? raw = await _db.getMeta(MetaKeys.uiPeriodMode);
+    if (!mounted) return;
+    state = PeriodMode.fromName(raw);
+  }
+
+  Future<void> setMode(PeriodMode mode) async {
+    state = mode;
+    await _db.setMeta(MetaKeys.uiPeriodMode, mode.name);
+  }
+
+  Future<void> toggle() => setMode(
+      state == PeriodMode.month ? PeriodMode.day : PeriodMode.month);
+}
+
+/// First instant of whichever period is currently selected — the single value
+/// every period-aware query below keys off, so the two lenses can never drift
+/// apart.
+final selectedPeriodStartProvider = Provider<DateTime>((ref) =>
+    switch (ref.watch(periodModeProvider)) {
+      PeriodMode.day => ref.watch(selectedDayProvider),
+      PeriodMode.month => ref.watch(selectedMonthProvider),
+    });
 
 /// Active ISO-4217 currency code from settings (default 'USD').
 final currencyProvider = StreamProvider<String>(
@@ -129,34 +194,56 @@ final languageProvider = StreamProvider<String>(
   (ref) => ref.watch(settingsRepoProvider).watchLanguage(),
 );
 
-// ---- derived summaries (all follow selectedMonthProvider) --------------------
+// ---- derived summaries (all follow the selected period lens) ----------------
 
-/// Income / expense / net for the selected month.
-final monthTotalsProvider = StreamProvider<MonthTotals>((ref) {
-  final month = ref.watch(selectedMonthProvider);
-  return ref.watch(summariesRepoProvider).watchMonthTotals(month);
+/// Income / expense / net for the selected period (day or month).
+///
+/// Transfers are excluded by the repository, so switching a purchase into a
+/// "send to savings" moves the balance without touching these numbers.
+final periodTotalsProvider = StreamProvider<PeriodTotals>((ref) {
+  final repo = ref.watch(summariesRepoProvider);
+  return switch (ref.watch(periodModeProvider)) {
+    PeriodMode.day => repo.watchDayTotals(ref.watch(selectedDayProvider)),
+    PeriodMode.month =>
+      repo.watchMonthTotals(ref.watch(selectedMonthProvider)),
+  };
 });
 
-/// Per-category expense totals for the selected month, largest first.
-final categoryTotalsProvider = StreamProvider<List<CategoryTotal>>((ref) {
-  final month = ref.watch(selectedMonthProvider);
-  return ref.watch(summariesRepoProvider).watchCategoryTotals(month);
+/// Per-category expense totals for the selected period, largest first.
+final periodCategoryTotalsProvider =
+    StreamProvider<List<CategoryTotal>>((ref) {
+  final repo = ref.watch(summariesRepoProvider);
+  return switch (ref.watch(periodModeProvider)) {
+    PeriodMode.day =>
+      repo.watchDayCategoryTotals(ref.watch(selectedDayProvider)),
+    PeriodMode.month =>
+      repo.watchCategoryTotals(ref.watch(selectedMonthProvider)),
+  };
 });
 
-/// Per-category totals for the selected month by kind
+/// Per-category totals for the selected period by kind
 /// ('income' | 'expense').
 final categoryTotalsByKindProvider =
     StreamProvider.family<List<CategoryTotal>, String>((ref, kind) {
-  final month = ref.watch(selectedMonthProvider);
-  return ref
-      .watch(summariesRepoProvider)
-      .watchCategoryTotals(month, kind: kind);
+  final repo = ref.watch(summariesRepoProvider);
+  return switch (ref.watch(periodModeProvider)) {
+    PeriodMode.day => repo.watchDayCategoryTotals(
+        ref.watch(selectedDayProvider),
+        kind: kind),
+    PeriodMode.month =>
+      repo.watchCategoryTotals(ref.watch(selectedMonthProvider), kind: kind),
+  };
 });
 
-/// Six months of totals ending at the selected month (oldest first).
-final lastSixMonthsProvider = StreamProvider<List<MonthTotals>>((ref) {
-  final month = ref.watch(selectedMonthProvider);
-  return ref.watch(summariesRepoProvider).watchLastSixMonths(month);
+/// The trend series under the Stats donut: six months in the month lens,
+/// fourteen days in the day lens.
+final trendProvider = StreamProvider<List<PeriodTotals>>((ref) {
+  final repo = ref.watch(summariesRepoProvider);
+  return switch (ref.watch(periodModeProvider)) {
+    PeriodMode.day => repo.watchLastDays(ref.watch(selectedDayProvider)),
+    PeriodMode.month =>
+      repo.watchLastSixMonths(ref.watch(selectedMonthProvider)),
+  };
 });
 
 // ---- transaction lists ---------------------------------------------------------
@@ -170,6 +257,17 @@ final recentTransactionsProvider = StreamProvider<List<Transaction>>(
 final monthTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
   final month = ref.watch(selectedMonthProvider);
   return ref.watch(transactionsRepoProvider).watchMonth(month);
+});
+
+/// Transactions in the selected period, newest first. In the day lens this is
+/// every entry for that day, not just the most recent handful — the point of
+/// the lens is to see the whole day.
+final periodTransactionsProvider = StreamProvider<List<Transaction>>((ref) {
+  final repo = ref.watch(transactionsRepoProvider);
+  return switch (ref.watch(periodModeProvider)) {
+    PeriodMode.day => repo.watchDay(ref.watch(selectedDayProvider)),
+    PeriodMode.month => repo.watchRecent(limit: 5),
+  };
 });
 
 // ---- categories -----------------------------------------------------------------
@@ -197,3 +295,38 @@ final categoriesByIdProvider = Provider<Map<String, Category>>((ref) {
   final cats = ref.watch(allCategoriesProvider).value ?? const [];
   return {for (final c in cats) c.id: c};
 });
+
+// ---- accounts -------------------------------------------------------------
+
+/// Non-deleted accounts, ordered.
+final activeAccountsProvider = StreamProvider<List<Account>>(
+  (ref) => ref.watch(accountsRepoProvider).watchActive(),
+);
+
+/// ALL accounts, archived included — transactions booked to an archived
+/// account must keep resolving their name/emoji/color.
+final allAccountsProvider = StreamProvider<List<Account>>(
+  (ref) => ref.watch(accountsRepoProvider).watchAll(),
+);
+
+/// Fast id -> Account lookup for lists.
+final accountsByIdProvider = Provider<Map<String, Account>>((ref) {
+  final accounts = ref.watch(allAccountsProvider).value ?? const [];
+  return {for (final a in accounts) a.id: a};
+});
+
+/// Every live account with its derived balance, ordered.
+final accountBalancesProvider = StreamProvider<List<AccountBalance>>(
+  (ref) => ref.watch(accountsRepoProvider).watchBalances(),
+);
+
+/// Total across every live account — "how much do I actually have".
+final netWorthMinorProvider = Provider<int>((ref) {
+  final balances = ref.watch(accountBalancesProvider).value ?? const [];
+  return balances.fold<int>(0, (sum, b) => sum + b.balanceMinor);
+});
+
+/// The synced id of the account the Telegram bot books its entries to.
+final defaultAccountIdProvider = StreamProvider<String>(
+  (ref) => ref.watch(settingsRepoProvider).watchDefaultAccountId(),
+);

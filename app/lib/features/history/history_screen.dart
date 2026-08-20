@@ -268,6 +268,9 @@ class _DayGroup extends StatelessWidget {
     final theme = Theme.of(context).textTheme;
     var net = 0;
     for (final tx in txs) {
+      // Transfers move money between the owner's own accounts, so they are
+      // neither a gain nor a loss for the day and must not move this subtotal.
+      if (tx.kind == Kind.transfer) continue;
       net += tx.kind == Kind.income ? tx.amountMinor : -tx.amountMinor;
     }
 

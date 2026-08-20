@@ -570,4 +570,53 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get currencyKZT => 'Казахстанский тенге';
+
+  @override
+  String get periodDay => 'День';
+
+  @override
+  String get periodMonth => 'Месяц';
+
+  @override
+  String get periodSwitchToDay => 'Показывать по дням';
+
+  @override
+  String get periodSwitchToMonth => 'Показывать весь месяц';
+
+  @override
+  String get homeNetToday => 'ИТОГ ЗА ДЕНЬ';
+
+  @override
+  String homeNetForDay({required String date}) {
+    return 'ИТОГ · $date';
+  }
+
+  @override
+  String get homeNothingSpentDayTitle => 'За день ничего не потрачено';
+
+  @override
+  String get homeNothingSpentDayMessage => 'Спокойный день для кошелька.';
+
+  @override
+  String get homeDayEntriesSection => 'Записи';
+
+  @override
+  String get seedAccountCash => 'Наличные';
+
+  @override
+  String get seedAccountCard => 'Карта';
+
+  @override
+  String get seedAccountSavings => 'Накопления';
+
+  @override
+  String get seedAccountInvestments => 'Инвестиции';
+
+  @override
+  String get transactionTransfer => 'Перевод';
+
+  @override
+  String transactionTransferRoute({required String from, required String to}) {
+    return '$from → $to';
+  }
 }

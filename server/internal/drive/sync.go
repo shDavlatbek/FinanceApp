@@ -324,6 +324,7 @@ func (e *Engine) syncOnce(ctx context.Context) error {
 		for _, s := range skipped {
 			log.Printf("drive: %s: skipped %s", f.Name, s)
 		}
+		batch.Accounts = append(batch.Accounts, rows.Accounts...)
 		batch.Categories = append(batch.Categories, rows.Categories...)
 		batch.Transactions = append(batch.Transactions, rows.Transactions...)
 		batch.Settings = append(batch.Settings, rows.Settings...)
