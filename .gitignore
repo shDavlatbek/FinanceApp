@@ -11,7 +11,7 @@ app/.dart_tool/
 app/build/
 
 # Generated screen captures (regenerate: see app/test/capture_screens_test.dart)
-app/test/shots/
+# app/test/shots/
 
 # OS
 .DS_Store

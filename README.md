@@ -138,6 +138,7 @@ Full protocol in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 ```
 app/      Flutter app (Riverpod + Drift + go_router + fl_chart + gen-l10n)
 server/   Go: Telegram bot + Drive sync + SQLite
+site/     Static home page + privacy policy + terms, for the OAuth consent screen
 docs/     SPEC.md · ARCHITECTURE.md (binding contracts) · DESIGN.md · PLAN.md
 ```
 

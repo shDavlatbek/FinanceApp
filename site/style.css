@@ -1,0 +1,291 @@
+/* Tally — the "calm ledger" design language from docs/DESIGN.md, on the web.
+   Dark-first, one lime accent, oversized type contrast, hairline borders.
+   Everything is local: no CDN, no webfont service, no analytics. A privacy
+   page that phones a third party to render itself is not one. */
+
+@font-face {
+  font-family: 'Manrope';
+  src: url('fonts/Manrope-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url('fonts/Manrope-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Manrope';
+  src: url('fonts/Manrope-ExtraBold.ttf') format('truetype');
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root {
+  --bg: #0e0f0c;
+  --surface: #171814;
+  --surface-raised: #1e201a;
+  --border: #ffffff14;
+  --text: #f4f5ef;
+  --text-dim: #9a9c92;
+  --accent: #c8f55a;
+  --on-accent: #10120b;
+  --radius: 22px;
+  --measure: 44rem;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f7f7f2;
+    --surface: #ffffff;
+    --surface-raised: #fbfbf7;
+    --border: #00000012;
+    --text: #191b14;
+    --text-dim: #5f6157;
+    --accent: #3e7c4f;
+    --on-accent: #ffffff;
+  }
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Manrope', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.7;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---- header ------------------------------------------------------------ */
+
+header {
+  padding: 28px 0 8px;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+
+.mark .glyph {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: var(--on-accent);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 17px;
+}
+
+nav {
+  margin-left: auto;
+  display: flex;
+  gap: 20px;
+  font-size: 15px;
+}
+
+nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  padding-bottom: 2px;
+}
+nav a:hover, nav a:focus-visible { color: var(--text); border-color: var(--accent); }
+
+/* ---- type -------------------------------------------------------------- */
+
+h1 {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  font-size: clamp(2.6rem, 8vw, 4.1rem);
+  margin: 40px 0 0;
+  text-wrap: balance;
+}
+
+h1 .quiet { color: var(--text-dim); }
+
+.lede {
+  font-size: clamp(1.05rem, 2.6vw, 1.28rem);
+  color: var(--text-dim);
+  margin: 22px 0 0;
+  max-width: 34rem;
+  text-wrap: pretty;
+}
+
+h2 {
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-size: 1.45rem;
+  line-height: 1.25;
+  margin: 56px 0 14px;
+  text-wrap: balance;
+}
+
+h3 {
+  font-weight: 600;
+  font-size: 1.05rem;
+  margin: 32px 0 8px;
+  letter-spacing: -0.01em;
+}
+
+p { margin: 0 0 16px; text-wrap: pretty; }
+
+/* When the date line opens the page it needs the space h1 would have taken,
+   or it reads as a second line of the header bar. */
+main > .eyebrow:first-child { margin-top: 44px; }
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin: 0 0 6px;
+}
+
+a { color: var(--text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+
+strong { font-weight: 600; }
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 1px 6px;
+  word-break: break-word;
+}
+
+ul { margin: 0 0 16px; padding-left: 1.15rem; }
+li { margin-bottom: 9px; }
+li::marker { color: var(--accent); }
+
+/* ---- blocks ------------------------------------------------------------ */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px 26px;
+  margin: 22px 0;
+}
+
+.card :where(h2, h3):first-child { margin-top: 0; }
+.card p:last-child, .card ul:last-child { margin-bottom: 0; }
+
+/* Three across, then one per row. An auto-fit track wrapped 2 + 1 at the
+   measure this page uses, which leaves a hole where the third card should be. */
+.grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 26px 0;
+}
+
+/* The three cards break out past the prose measure. A third of a 44rem column
+   is four words a line, which is not reading. */
+@media (min-width: 56rem) {
+  .grid {
+    width: calc(100% + 7rem);
+    margin-inline: -3.5rem;
+  }
+}
+
+@media (max-width: 46rem) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.grid .card { margin: 0; padding: 22px; }
+
+.grid h3 { margin: 0 0 6px; font-weight: 800; letter-spacing: -0.01em; }
+.grid p { color: var(--text-dim); font-size: 0.95rem; margin: 0; }
+
+.emoji { font-size: 1.5rem; line-height: 1; display: block; margin-bottom: 12px; }
+
+.pill {
+  display: inline-block;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 13px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin: 0 6px 8px 0;
+}
+
+.note {
+  border-left: 2px solid var(--accent);
+  padding-left: 18px;
+  margin: 22px 0;
+  color: var(--text-dim);
+}
+
+.note strong { color: var(--text); }
+
+dl { margin: 0; }
+dt { font-weight: 600; margin-top: 18px; }
+dt:first-child { margin-top: 0; }
+dd { margin: 4px 0 0; color: var(--text-dim); }
+
+/* ---- footer ------------------------------------------------------------ */
+
+footer {
+  margin-top: 84px;
+  border-top: 1px solid var(--border);
+  padding: 28px 0 56px;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+footer a { color: var(--text-dim); }
+
+.footer-row {
+  display: flex;
+  gap: 8px 22px;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.footer-row .spacer { margin-left: auto; }
+
+main { padding-bottom: 8px; }
+
+:target { scroll-margin-top: 24px; }
+
+@media (max-width: 34rem) {
+  body { font-size: 16px; }
+  .card { padding: 20px; }
+}

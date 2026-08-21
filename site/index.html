@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tally — a money tracker that keeps your data yours</title>
+<meta name="description" content="Tally is a self-hosted personal money tracker: log an expense by messaging a Telegram bot, see where it went in an offline-first app. It syncs through your own Google Drive — there is no Tally server.">
+<meta name="color-scheme" content="dark light">
+<link rel="stylesheet" href="style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='28' fill='%23c8f55a'/><text y='72' x='50' text-anchor='middle' font-family='sans-serif' font-size='62' font-weight='bold' fill='%2310120b'>T</text></svg>">
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <div class="bar">
+    <a class="mark" href="index.html"><span class="glyph">T</span> Tally</a>
+    <nav>
+      <a href="privacy.html">Privacy</a>
+      <a href="terms.html">Terms</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+  <h1>Your money data<br><span class="quiet">stays yours.</span></h1>
+
+  <p class="lede">
+    Tally is a personal money tracker you run yourself. Log an expense by
+    messaging a Telegram bot — <code>250 groceries</code>, done — and see where
+    it went in an app that works fully offline. It syncs through
+    <strong>your own Google Drive</strong>. There is no Tally server, and no
+    account to sign up for.
+  </p>
+
+  <div class="grid">
+    <div class="card">
+      <span class="emoji" aria-hidden="true">🤖</span>
+      <h3>Three seconds to log</h3>
+      <p>Message the bot in plain language. It learns your shorthand, so next
+         time it takes zero taps.</p>
+    </div>
+    <div class="card">
+      <span class="emoji" aria-hidden="true">📱</span>
+      <h3>Offline first</h3>
+      <p>The app never waits on a network. With no Drive connected at all it is
+         still a complete tracker.</p>
+    </div>
+    <div class="card">
+      <span class="emoji" aria-hidden="true">🗄️</span>
+      <h3>Your Drive, your files</h3>
+      <p>Both halves exchange readable JSON in one folder of your Drive. That
+         folder doubles as your backup.</p>
+    </div>
+  </div>
+
+  <h2>What Tally can see in your Google Drive</h2>
+
+  <p>
+    Tally asks for exactly one Google permission,
+    <code>drive.file</code>, described by Google as
+    <em>“See, edit, create, and delete only the specific Google Drive files you
+    use with this app.”</em> In practice that means:
+  </p>
+
+  <div class="card">
+    <dl>
+      <dt>It can read and write the files it made</dt>
+      <dd>One folder named <code>Tally</code>, holding one small JSON snapshot
+          per device — <code>tally-&lt;device-id&gt;.json</code>.</dd>
+      <dt>It cannot see anything else you own</dt>
+      <dd>Not your documents, not your photos, not files another app created.
+          Google enforces this, not us.</dd>
+      <dt>Nothing is sent anywhere else</dt>
+      <dd>Your phone and your server talk to Google Drive and to each other
+          through those files. No third party is involved, and neither are we.</dd>
+    </dl>
+  </div>
+
+  <p class="note">
+    <strong>There is no “our server”.</strong> Tally is software you host. The
+    people who wrote it operate nothing, receive nothing and can see nothing.
+    Read the <a href="privacy.html">privacy policy</a> for the detail.
+  </p>
+
+  <h2>Run it yourself</h2>
+
+  <p>
+    The whole backend is one Go binary — Telegram bot, Drive sync and SQLite —
+    in one container, and it only ever makes outbound calls. No exposed port,
+    no public hostname, no TLS certificate to renew.
+  </p>
+
+  <p>
+    <span class="pill">Telegram bot</span>
+    <span class="pill">Flutter app · Android &amp; iOS</span>
+    <span class="pill">Google Drive sync</span>
+    <span class="pill">English · Русский · Oʻzbekcha</span>
+    <span class="pill">MIT licensed</span>
+  </p>
+
+</main>
+
+<footer>
+  <div class="footer-row">
+    <span>Tally — open source, MIT licensed.</span>
+    <span class="spacer"></span>
+    <a href="privacy.html">Privacy</a>
+    <a href="terms.html">Terms</a>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>
