@@ -145,17 +145,25 @@ String currencySymbolFor(String currencyCode, {String? locale}) =>
       name: currencyCode.toUpperCase(),
     ).currencySymbol;
 
-/// Groups the whole part of a raw numpad string for [locale] (`1 234` in ru,
-/// `1,234` in en). Used by the live amount display in the entry sheet.
+/// Groups a whole number for [locale] (`1 234` in ru, `1,234` in en).
 String formatWholeGrouped(int whole, {String? locale}) =>
     NumberFormat('#,##0', locale).format(whole);
 
 /// The decimal separator [locale] writes (`.` in en, `,` in ru and uz).
 ///
-/// Raw numpad input is always kept canonical (`.`); this is only what the
-/// numpad key and the live amount display *show*.
+/// Typed input is always kept canonical (`.`) before it is parsed; this is only
+/// what the amount field *shows*.
 String decimalSeparatorFor({String? locale}) =>
     NumberFormat.decimalPattern(locale).symbols.DECIMAL_SEP;
+
+/// The thousands separator [locale] writes (`,` in en, a no-break space in ru
+/// and uz).
+///
+/// The amount field needs it twice over: to insert it while grouping, and to
+/// know that a lone `,` in English is a *group* separator rather than a decimal
+/// point — the difference between `1,234` meaning 1234 and meaning 1.23.
+String groupSeparatorFor({String? locale}) =>
+    NumberFormat.decimalPattern(locale).symbols.GROUP_SEP;
 
 /// Parses an unsigned magnitude (`"250"`, `"250.50"`, `"250,50"`, `"1 234,5"`)
 /// into minor units for [currencyCode]. Zero is allowed here; the public

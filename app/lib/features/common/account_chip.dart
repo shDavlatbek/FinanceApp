@@ -65,9 +65,9 @@ class AccountChip extends StatelessWidget {
 
 /// A labelled, horizontally scrolling row of [AccountChip]s.
 ///
-/// One line rather than a wrap: the entry sheet has a fixed numpad below it,
-/// and a picker that grows a second row pushes the Save button off a short
-/// screen.
+/// One line rather than a wrap: the entry sheet stacks a category grid, a
+/// note and the date chips below this, and a picker that grows a second row
+/// pushes the Save button off a short screen.
 class AccountStrip extends StatelessWidget {
   const AccountStrip({
     super.key,

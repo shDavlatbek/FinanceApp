@@ -160,7 +160,7 @@ void main() {
         );
         await _settle(tester);
 
-        // Entry sheet: numpad, category chips, date chips, save button.
+        // Entry sheet: amount field, category chips, date chips, save.
         await tester.tap(find.byIcon(Icons.add_rounded));
         await _settle(tester);
         await tester.tap(find.byIcon(Icons.close_rounded));

@@ -16,6 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tally/data/providers.dart';
 import 'package:tally/data/repo/accounts_repository.dart';
+import 'package:tally/features/entry/amount_input.dart';
 import 'package:tally/data/repo/settings_repository.dart';
 import 'package:tally/data/repo/transactions_repository.dart';
 import 'package:tally/main.dart';
@@ -132,6 +133,19 @@ Future<void> _seed(AppDatabase db, {int scale = 1}) async {
   }
 }
 
+/// Types into the entry sheet's hero amount field, which is the only
+/// [AmountField] on screen (the note is an ordinary TextField).
+Future<void> _typeAmount(WidgetTester tester, String amount) async {
+  await tester.enterText(
+    find.descendant(
+      of: find.byType(AmountField),
+      matching: find.byType(TextField),
+    ),
+    amount,
+  );
+  await _settle(tester);
+}
+
 Future<void> _settle(WidgetTester tester) async {
   await tester.pump();
   for (final ms in const [100, 300, 500, 800, 1200]) {
@@ -180,15 +194,8 @@ void main() {
       find.byType(TallyApp),
       matchesGoldenFile('shots/02_entry_sheet.png'),
     );
-    // Type an amount on the custom numpad.
-    for (final key in const ['2', '4', '9', '9']) {
-      final k = find.text(key);
-      if (k.evaluate().isNotEmpty) {
-        await tester.tap(k.first);
-        await tester.pump(const Duration(milliseconds: 60));
-      }
-    }
-    await _settle(tester);
+    // Type an amount into the hero field.
+    await _typeAmount(tester, '2499');
     await expectLater(
       find.byType(TallyApp),
       matchesGoldenFile('shots/03_entry_typed.png'),
@@ -430,14 +437,7 @@ void main() {
     // One-tap "send to savings": the entry sheet in transfer mode.
     await tester.tap(find.text('Send to Savings'));
     await _settle(tester);
-    for (final key in const ['5', '0', '0']) {
-      final k = find.text(key);
-      if (k.evaluate().isNotEmpty) {
-        await tester.tap(k.first);
-        await tester.pump(const Duration(milliseconds: 60));
-      }
-    }
-    await _settle(tester);
+    await _typeAmount(tester, '500');
     await expectLater(
       find.byType(TallyApp),
       matchesGoldenFile('shots/22_transfer_sheet.png'),

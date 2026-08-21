@@ -14,7 +14,7 @@ import 'package:tally/data/providers.dart';
 import 'package:tally/data/repo/transactions_repository.dart';
 import 'package:tally/features/common/buttons.dart';
 import 'package:tally/features/entry/entry_sheet.dart';
-import 'package:tally/features/entry/numpad.dart';
+import 'package:tally/features/entry/amount_input.dart';
 import 'package:tally/l10n/l10n.dart';
 
 import 'support/test_db.dart';
@@ -77,18 +77,18 @@ Future<void> _pumpSheet(
   await _settle(tester);
 }
 
-/// Taps the digits of [amount] on the custom numpad.
+/// Types [amount] into the hero amount field.
 ///
-/// Scoped to the [Numpad] subtree: the oversized amount display shows the same
-/// digits, so a bare `find.text('5')` is ambiguous the moment anything is typed.
+/// Scoped to the [AmountField] subtree: the sheet also holds the note field,
+/// and `find.byType(TextField)` alone would be ambiguous.
 Future<void> _type(WidgetTester tester, String amount) async {
-  for (final String ch in amount.split('')) {
-    await tester.tap(find.descendant(
-      of: find.byType(Numpad),
-      matching: find.text(ch),
-    ));
-    await tester.pump(const Duration(milliseconds: 20));
-  }
+  await tester.enterText(
+    find.descendant(
+      of: find.byType(AmountField),
+      matching: find.byType(TextField),
+    ),
+    amount,
+  );
   await _settle(tester);
 }
 

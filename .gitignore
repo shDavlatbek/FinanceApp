@@ -16,3 +16,13 @@ app/test/shots/
 # OS
 .DS_Store
 Thumbs.db
+
+# Android release signing — a signing key in the repo means anyone can publish
+# an update to your app. Keep both the key and the passwords out.
+app/android/key.properties
+*.jks
+*.keystore
+
+# Compiled-in Google OAuth client for the app (`--dart-define-from-file`).
+# Same client as the server's .env; keep it out of the repo for the same reason.
+app/drive.json

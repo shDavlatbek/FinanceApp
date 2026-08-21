@@ -37,7 +37,7 @@ Bundle fonts as assets (offline app — no runtime fetching). **Manrope** for ev
 
 - Hero month number animates on change (count-up/tween ~450 ms, `Curves.easeOutCubic`)
 - Category bars grow in with staggered delays (~40 ms apart) on screen entry
-- Entry sheet: springy slide-up; numpad keys give haptic feedback (`HapticFeedback.lightImpact`)
+- Entry sheet: springy slide-up; every pick (kind, category, account, date) gives haptic feedback (`HapticFeedback.selectionClick`) and a save gives `mediumImpact`
 - List items: implicit animations on insert/remove (AnimatedList or animated switcher patterns)
 - Page transitions: fade-through, 250–300 ms; never default jarring cuts
 - All durations 200–450 ms; nothing bounces more than once
@@ -50,7 +50,8 @@ Bundle fonts as assets (offline app — no runtime fetching). **Manrope** for ev
 - **Money that does not fit:** amounts shrink before they truncate, and drop their currency symbol before they shrink into unreadability. Never ellipsize a number: `15 360…` is not an amount. A zero-decimal, high-denomination currency (soʻm) is several times wider than the same figure in dollars, and every money slot has to survive it.
 - **Time and order:** every row shows its time of day, because the time is what orders a day. The entry sheet carries a time control under the date chips (its own line — four chips leave no room for "Yesterday" in Russian or Uzbek). In History, long-press a row to drag it into place inside its day; swipe still deletes. The lifted row scales slightly and never gains a Material drop shadow.
 - **Transfers:** never rendered as income or expense. Neutral ink, an unsigned amount (it is the same money in a different pocket), a `🔄` medallion and the two accounts as the subtitle: `Cash → Savings`.
-- **Entry sheet:** full-height modal. Big amount display top (live-formatted), custom numpad (not system keyboard), kind toggle (expense/income) as segmented pill, category grid of emoji chips, optional note field + date chip row (Today / Yesterday / pick)
+- **Entry sheet:** full-height modal. Big amount **field** top (live-formatted, see below), kind toggle (expense/income/transfer) as a segmented pill, category grid of emoji chips, an account strip, optional note field + date chip row (Today / Yesterday / pick) and a time chip
+- **The amount is a real text field**, not a custom numpad *(changed 2026-08-21, owner's call; it was a numpad before)*. A field brings the platform's numeric keyboard, its caret, and — the reason for the change — **select, copy and paste**, which a grid of tap targets cannot offer. What it must not cost is the look, so the field keeps the hero numeral's face: oversized tabular figures, thousands grouping inserted **live as you type**, the locale's decimal separator, no more decimals than the currency has, and the currency symbol glued to the left of the number with the pair centred as one unit. It steps its face size down as the number grows rather than clipping. The keyboard is `numberWithOptions(decimal:)`, never `phone` — a dialpad offers `+`, `*` and `#`, and on iOS has no decimal key. A new entry opens with the field focused (the amount is what you came to type); an edit does not. Picking anything closes the keyboard, because the next thing after picking is always Save.
 - **Stats:** donut with center total, tap slice → highlight + legend row emphasis; 6-month bar trend below
 - **Empty states:** designed, warm, one-line copy + subtle illustration built from emoji/typography (no stock art)
 - Bottom navigation: 4 items (Home, History, Stats, Settings), FAB centered or docked

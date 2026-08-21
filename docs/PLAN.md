@@ -1,5 +1,75 @@
 # Tally — build status
 
+## v6 (amount field, release signing) — built 2026-08-21
+
+### Verified on 2026-08-21 (run directly against the tree)
+
+| check | result |
+|---|---|
+| `flutter analyze` | **0 issues** |
+| `flutter test` | **326 pass**, 7 skipped (capture harness) |
+| `go vet ./...` · `go test -count=1 ./...` | clean (untouched this round) |
+| `flutter build apk --release` | **succeeds**, fat APK 65.4 MB |
+| `flutter build apk --release --split-per-abi` | **succeeds after `flutter clean`**, 20–24 MB per ABI |
+
+### The amount input is a text field now, not a numpad
+
+Owner's call. `DESIGN.md` specified a custom numpad and now specifies a field —
+the doc was amended, not just the code, or the next agent would put the numpad
+back. What the field buys is select/copy/paste and the platform keyboard; what
+it must not cost is the look, so `features/entry/amount_input.dart` keeps the
+hero face and does the formatting itself:
+
+- live thousands grouping, the locale's decimal separator, and no more decimals
+  than the currency has;
+- pasting `$1,234.56` or `1.234,56` both work — when both separators appear the
+  **last** one is the decimal point, and a lone `,` is a group separator in
+  English but a decimal point in Russian;
+- backspace over a group separator deletes the digit it follows, instead of
+  being a dead key;
+- the caret is tracked in *significant characters*, not string offsets, because
+  grouping separators appear and vanish under it on every keystroke;
+- the face steps down as the number grows — the `AdaptiveAmount` rule, done with
+  a size ramp because a text field cannot be scaled by its parent.
+
+`numpad.dart` is deleted. 26 unit tests in `amount_input_test.dart` cover the
+formatter, including the caret; one of them caught a real bug where clearing the
+field returned `TextEditingValue.empty` (caret offset **-1**), which made the
+next keystroke throw.
+
+The category grid grew from 118 px to 147 px — three whole rows instead of two
+and a half — with the space the numpad left behind.
+
+### Build issues found and fixed
+
+- **Release builds were signed with the debug key.** `android/app/build.gradle.kts`
+  now reads `android/key.properties` (gitignored, along with `*.jks`) and falls
+  back to the debug key with a loud Gradle warning when it is absent, so a fresh
+  clone still runs `--release`. README § Signing a release build has the
+  `keytool` line.
+- **`CupertinoIcons` had no font.** `flutter_localizations` pulls in
+  `GlobalCupertinoLocalizations`, which drags in Cupertino widgets that
+  reference the icon font — so the tree-shaker warned and any Cupertino glyph
+  (the iOS text-selection toolbar, now reachable from the amount field) would
+  have drawn as a blank box. `cupertino_icons` added; tree-shaken to 848 bytes.
+- **`--split-per-abi` failed on `extractReleaseNativeSymbolTables`** with
+  `NoSuchFileException: …/x86_64/libsqlite3.so.sym`. Stale intermediates from a
+  previous fat-APK build, not a code problem: `flutter clean` fixes it. Recorded
+  in the README because the message reads like a broken toolchain.
+- The JDK 24+ "restricted method" warnings come from the Gradle **launcher**
+  JVM, so `gradle.properties` cannot silence them — `GRADLE_OPTS` can. Both are
+  documented; the `gradle.properties` grant is kept for the daemon, which is
+  what matters once JEP 472 starts blocking instead of warning.
+
+### Still not done
+
+- **No real Google Drive round trip has ever happened**, and the Telegram bot
+  has never talked to Telegram.
+- **`file_picker` has never run on a device**, and neither has the new amount
+  field — the formatter is unit-tested, but no real soft keyboard has typed
+  into it. Worth ten minutes on a phone: type, paste, backspace over a
+  separator, and switch the language to Russian.
+
 ## v5 (the Flutter half of accounts + export/import) — built 2026-08-21
 
 Closes the three items v3 left open on the app side: the **Accounts screen**,

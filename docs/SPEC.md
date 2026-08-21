@@ -9,6 +9,10 @@
 - **Constraint:** Bot self-hosted on the owner's VPS as one Docker Compose; Flutter app (Android/iOS from one codebase) that works fully offline; one main currency.
 - **Out of scope:** bank sync, CSV import, multi-currency, budget limits/alerts, multi-user & app-store polish, monetization. Budgets with Telegram warnings are the headline next feature.
 
+### Amended 2026-08-21 (v5)
+
+- **The amount input is a standard text field, not the custom numpad.** Requested by the owner: tapping the number brings up the phone's numeric keyboard, and select/copy/paste work — which they could not with a grid of tap targets. The numpad's *design* is kept (oversized live-formatted numerals, grouping as you type, the currency symbol beside the number); only the input mechanism changes. This supersedes "numpad-first entry sheet" in the V1 list below and the numpad line in DESIGN.md.
+
 ### Amended 2026-08-20 (v3)
 
 - **Accounts, requested by the owner.** Money now sits somewhere — cash, a card, savings, investments — and "send to savings" / "send to investments" moves it between two of them. Modelled as a third transaction kind, `transfer`, which deliberately affects **no** income or expense total: putting money aside is not spending. Savings and investments are ordinary accounts rather than a separate goal system, so there is one money-movement path, not two.
@@ -36,7 +40,7 @@
 
 ### Flutter app
 - **Home:** current month at a glance — net/spent/income headline numbers, per-category spending bars, recent transactions; month switcher
-- **Quick add:** numpad-first entry sheet (amount → category grid → optional note/date), income/expense toggle
+- **Quick add:** amount-first entry sheet (amount → category grid → account → optional note/date), expense/income/transfer toggle
 - **History:** all transactions grouped by day, search by note, filter by category/kind; tap to edit, swipe to delete
 - **Stats:** category donut + 6-month trend bars, per-month navigation
 - **Categories:** add/edit/archive, emoji + color pickers, reorder

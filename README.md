@@ -60,9 +60,56 @@ flutter run \
   --dart-define=GOOGLE_CLIENT_SECRET=yyyy
 ```
 
-The OAuth client is compiled in rather than typed at runtime, so no credentials sit in the repo. Use the same `--dart-define` flags with `flutter build apk`. A build without them still runs — it just shows "no Google OAuth client compiled in" instead of the Connect button.
+Rather than retyping those flags, put them in a file once:
+
+```bash
+cp drive.example.json drive.json   # then fill in your client id + secret
+flutter run   --dart-define-from-file=drive.json
+flutter build apk --release --dart-define-from-file=drive.json
+```
+
+`drive.json` is gitignored. The OAuth client is compiled in rather than typed at runtime, so no credentials sit in the repo — which also means **a build without the flags can never sync**: it shows "no Google OAuth client compiled in" where the Connect button would be, and works as a standalone tracker. If you flash an APK and Settings has no Connect button, this is why.
 
 To sync: **Settings → Connect Google Drive**, then open the shown URL, enter the code, and sign in with the same Google account the server uses. There is no Android or iOS OAuth configuration to do — no SHA-1 fingerprints, no `Info.plist` entries — because the app uses the same limited-input-device flow the server does.
+
+### 4. Signing a release build
+
+Out of the box a release build is signed with the **debug** key: it installs and runs, but it cannot be published, and it cannot upgrade an install signed with any other key. Gradle prints a warning saying so. To sign properly, create a keystore once and point Gradle at it:
+
+```bash
+keytool -genkey -v -keystore ~/tally-release.jks \
+  -keyalg RSA -keysize 2048 -validity 10000 -alias tally
+
+cat > app/android/key.properties <<'EOF'
+storeFile=/home/you/tally-release.jks
+storePassword=...
+keyAlias=tally
+keyPassword=...
+EOF
+```
+
+`key.properties` and `*.jks` are gitignored — a signing key in a public repo lets anyone ship an update to your app. **Back the keystore up somewhere you will still have it in two years:** losing it means you can never update an installed copy again, only uninstall and reinstall.
+
+Then:
+
+```bash
+# One APK per CPU architecture — ~25 MB each instead of one 65 MB fat APK
+flutter build apk --release --split-per-abi --dart-define-from-file=drive.json
+
+# Or an app bundle, if you are going anywhere near Play
+flutter build appbundle --release --dart-define-from-file=drive.json
+```
+
+#### Build noise, and the one failure that is real
+
+Two warnings are harmless and not about this app:
+
+- **`A restricted method in java.lang.System has been called`** (four lines) — Gradle's own `native-platform` loads a native library, which JDK 24+ flags. It comes from the Gradle **launcher** JVM, so `android/gradle.properties` cannot silence it; `export GRADLE_OPTS=--enable-native-access=ALL-UNNAMED` does. (`gradle.properties` grants the same thing to the daemon, which matters once JEP 472 starts *blocking* rather than warning.)
+- **`SDK XML version 4 ... only understands up to 3`** — your `cmdline-tools` is newer than the Android Gradle Plugin's SDK parser. Cosmetic, and it only appears when the SDK is re-scanned.
+
+One thing that looks like noise but is not:
+
+- **`Execution failed for task ':app:extractReleaseNativeSymbolTables'` / `NoSuchFileException: .../x86_64/libsqlite3.so.sym`** — this is stale build output, not a code problem. It happens when you build `--split-per-abi` in a tree that last built a fat APK: the symbol-table directory still holds the ABIs the split build is not producing, and Gradle 9 refuses to read a directory it cannot account for. `flutter clean` and rebuild; verified fix.
 
 ## Configuration
 

@@ -1,6 +1,11 @@
 /// Full-height transaction entry sheet — springy slide-up, live-formatted
-/// oversized amount, custom numpad, kind pill, emoji category grid, note and
-/// date chips. Also used to edit an existing transaction.
+/// oversized amount field, kind pill, emoji category grid, note and date
+/// chips. Also used to edit an existing transaction.
+///
+/// The amount is a real text field (see `amount_input.dart`), so it brings the
+/// platform's numeric keyboard and its select/copy/paste. Picking anything —
+/// a kind, a category, an account — closes the keyboard, because the next
+/// thing after picking is always Save.
 ///
 /// Three kinds share the sheet. An expense or an income picks a category and
 /// the account the money moves through; a **transfer** picks two accounts and
@@ -20,7 +25,7 @@ import '../../l10n/l10n.dart';
 import '../common/account_chip.dart';
 import '../common/buttons.dart';
 import '../common/kind_pill.dart';
-import 'numpad.dart';
+import 'amount_input.dart';
 import 'package:tally/data/providers.dart';
 
 /// Opens the sheet as a custom route: springy slide-up (easeOutBack, 420 ms),
@@ -102,7 +107,12 @@ class EntrySheet extends ConsumerStatefulWidget {
 
 class _EntrySheetState extends ConsumerState<EntrySheet> {
   late String _kind;
-  late String _raw;
+
+  /// Holds the DISPLAYED amount — grouped and localized. The value is read
+  /// back through [canonicalAmount] before parsing; handing the shown text to
+  /// the parser directly would read the English group separator as a decimal
+  /// point.
+  late final TextEditingController _amount;
   String? _categoryId;
 
   /// The account money moves through — where an expense leaves from, where an
@@ -115,6 +125,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
   late DateTime _date;
   late final TextEditingController _note;
   bool _saving = false;
+  bool _amountPrefilled = false;
 
   bool get _editing => widget.existing != null;
   bool get _isTransfer => _kind == Kind.transfer;
@@ -123,12 +134,11 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
   void initState() {
     super.initState();
     final tx = widget.existing;
-    final currency = ref.read(currencyProvider).value ?? defaultCurrency;
     _kind = tx?.kind ??
         (Kind.isValidTransaction(widget.initialKind ?? '')
             ? widget.initialKind!
             : Kind.expense);
-    _raw = tx == null ? '' : minorToEditable(tx.amountMinor, currency);
+    _amount = TextEditingController();
     // A transfer stores an EMPTY category by contract; carrying that through
     // as `''` would look like a chosen category and let Save through with a
     // row no peer would accept.
@@ -142,10 +152,35 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Prefilling needs the locale's separators, so it cannot happen in
+    // initState. Routed through the field's own formatter rather than
+    // formatted by hand, so an edited amount and a typed one are displayed by
+    // exactly one piece of code.
+    if (_amountPrefilled) return;
+    _amountPrefilled = true;
+    final Transaction? tx = widget.existing;
+    if (tx == null) return;
+    final String currency = ref.read(currencyProvider).value ?? defaultCurrency;
+    _amount.value = AmountInputFormatter(
+      decimals: decimalDigitsFor(currency),
+      groupSeparator: groupSeparatorFor(locale: context.localeTag),
+      decimalSeparator: decimalSeparatorFor(locale: context.localeTag),
+    ).format(minorToEditable(tx.amountMinor, currency));
+  }
+
+  @override
   void dispose() {
+    _amount.dispose();
     _note.dispose();
     super.dispose();
   }
+
+  /// Closes the keyboard. Called whenever something is PICKED: with the
+  /// keyboard up, a phone screen has no room for the category grid and the
+  /// Save button at once.
+  void _dismissKeyboard() => FocusScope.of(context).unfocus();
 
   /// The source account this sheet will actually write, given the live account
   /// list and the synced default.
@@ -171,31 +206,9 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     return null;
   }
 
-  void _onDigit(String d, int decimals) {
-    setState(() {
-      final dot = _raw.indexOf('.');
-      if (dot >= 0) {
-        if (_raw.length - dot - 1 >= decimals) return;
-        _raw += d;
-      } else {
-        if (_raw.length >= 9) return;
-        _raw = _raw == '0' ? d : _raw + d;
-      }
-    });
-  }
-
-  void _onDecimal() {
-    if (_raw.contains('.')) return;
-    setState(() => _raw = _raw.isEmpty ? '0.' : '$_raw.');
-  }
-
-  void _onBackspace() {
-    if (_raw.isEmpty) return;
-    setState(() => _raw = _raw.substring(0, _raw.length - 1));
-  }
-
   void _setKind(String kind) {
     if (kind == _kind) return;
+    _dismissKeyboard();
     setState(() {
       _kind = kind;
       // Categories are per-kind, so the old pick is meaningless under the new
@@ -338,8 +351,13 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     final theme = Theme.of(context).textTheme;
     final l10n = context.l10n;
     final currency = ref.watch(currencyProvider).value ?? defaultCurrency;
-    final decimals = decimalDigitsFor(currency);
-    final minor = parseAmountToMinor(_raw, currencyCode: currency);
+    final minor = parseAmountToMinor(
+      canonicalAmount(
+        _amount.text,
+        decimalSeparator: decimalSeparatorFor(locale: context.localeTag),
+      ),
+      currencyCode: currency,
+    );
     final List<Account> accounts =
         ref.watch(activeAccountsProvider).value ?? const <Account>[];
     final String settingsDefault =
@@ -425,15 +443,27 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                           ],
                         ),
                       ),
-                      Expanded(
-                        child: Center(
-                          child: _AmountDisplay(
-                            raw: _raw,
-                            currency: currency,
-                            kind: _kind,
-                          ),
-                        ),
+                      // Two spacers rather than one Expanded around the
+                      // field: they split the free space so the number sits
+                      // centred on a tall screen, and both collapse to zero
+                      // when the keyboard takes the bottom half. An Expanded
+                      // here would be squeezed to zero height instead, and the
+                      // amount — the one thing this sheet is for — would
+                      // vanish.
+                      const Spacer(),
+                      AmountField(
+                        controller: _amount,
+                        currency: currency,
+                        kind: _kind,
+                        locale: context.localeTag,
+                        // The amount is what you opened a NEW entry to type;
+                        // an edit is usually about the category or the note,
+                        // so it opens without the keyboard in the way.
+                        autofocus: !_editing,
+                        onChanged: (_) => setState(() {}),
+                        onSubmitted: _dismissKeyboard,
                       ),
+                      const Spacer(),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
                         child: KindPill(
@@ -453,10 +483,12 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                           toId: _toAccountId,
                           onFrom: (id) {
                             HapticFeedback.selectionClick();
+                            _dismissKeyboard();
                             setState(() => _accountId = id);
                           },
                           onTo: (id) {
                             HapticFeedback.selectionClick();
+                            _dismissKeyboard();
                             setState(() => _toAccountId = id);
                           },
                         )
@@ -466,6 +498,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                           selectedId: _categoryId,
                           onSelect: (id) {
                             HapticFeedback.selectionClick();
+                            _dismissKeyboard();
                             setState(() => _categoryId = id);
                           },
                         ),
@@ -476,6 +509,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                           selectedId: fromId,
                           onSelect: (id) {
                             HapticFeedback.selectionClick();
+                            _dismissKeyboard();
                             setState(() => _accountId = id);
                           },
                         ),
@@ -511,18 +545,6 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Numpad(
-                          decimalEnabled: decimals > 0,
-                          decimalLabel: decimalSeparatorFor(
-                              locale: context.localeTag),
-                          onDigit: (d) => _onDigit(d, decimals),
-                          onDecimal: _onDecimal,
-                          onBackspace: _onBackspace,
-                          onClear: () => setState(() => _raw = ''),
-                        ),
-                      ),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 6, 20, 12),
                         child: SizedBox(
@@ -560,76 +582,6 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
 
 // ---- pieces -----------------------------------------------------------------
 
-class _AmountDisplay extends StatelessWidget {
-  const _AmountDisplay({
-    required this.raw,
-    required this.currency,
-    required this.kind,
-  });
-
-  final String raw;
-  final String currency;
-  final String kind;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = context.tokens;
-    final theme = Theme.of(context).textTheme;
-    final locale = context.localeTag;
-    final symbol = currencySymbolFor(currency, locale: locale);
-
-    final parts = raw.split('.');
-    final whole = parts[0].isEmpty ? 0 : int.parse(parts[0]);
-    final grouped = formatWholeGrouped(whole, locale: locale);
-    // `raw` is canonical (dot); show the locale's separator.
-    final separator = decimalSeparatorFor(locale: locale);
-    final display = raw.isEmpty
-        ? '0'
-        : raw.contains('.')
-            ? '$grouped$separator${parts.length > 1 ? parts[1] : ''}'
-            : grouped;
-    final empty = raw.isEmpty;
-
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                kind == Kind.income ? '+$symbol' : symbol,
-                style: money(theme.headlineMedium!).copyWith(
-                  color:
-                      kind == Kind.income ? t.income : t.textSecondary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 4),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 160),
-              curve: Curves.easeOutCubic,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                display,
-                style: money(theme.displayLarge!).copyWith(
-                  fontSize: 58,
-                  color: empty
-                      ? t.textSecondary.withValues(alpha: 0.5)
-                      : t.textPrimary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _CategoryGrid extends ConsumerWidget {
   const _CategoryGrid({
     required this.kind,
@@ -662,7 +614,10 @@ class _CategoryGrid extends ConsumerWidget {
       ),
       child: ConstrainedBox(
         key: ValueKey(kind),
-        constraints: const BoxConstraints(maxHeight: 118),
+        // Three whole rows of chips. 118 fit two and a half, and a row sliced
+        // through the middle reads as a rendering bug rather than as "scroll
+        // for more"; the space came free when the numpad left.
+        constraints: const BoxConstraints(maxHeight: 147),
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Wrap(

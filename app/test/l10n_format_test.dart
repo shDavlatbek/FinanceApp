@@ -87,7 +87,7 @@ void main() {
       expect(currencySymbolFor('UZS', locale: 'uz'), 'soʼm');
     });
 
-    test('the live numpad grouping follows the locale', () {
+    test('the live amount grouping follows the locale', () {
       expect(formatWholeGrouped(1234567, locale: 'en'), '1,234,567');
       expect(
           formatWholeGrouped(1234567, locale: 'ru'), '1${nbsp}234${nbsp}567');
@@ -95,10 +95,16 @@ void main() {
           formatWholeGrouped(1234567, locale: 'uz'), '1${nbsp}234${nbsp}567');
     });
 
-    test('the numpad decimal key shows the locale separator', () {
+    test('the amount field separators follow the locale', () {
       expect(decimalSeparatorFor(locale: 'en'), '.');
       expect(decimalSeparatorFor(locale: 'ru'), ',');
       expect(decimalSeparatorFor(locale: 'uz'), ',');
+      // The group separator matters twice over in the amount field: it is
+      // inserted while grouping, and it is how a lone `,` in English is known
+      // to be a group separator rather than a decimal point.
+      expect(groupSeparatorFor(locale: 'en'), ',');
+      expect(groupSeparatorFor(locale: 'ru'), nbsp);
+      expect(groupSeparatorFor(locale: 'uz'), nbsp);
     });
   });
 
