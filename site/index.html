@@ -3,11 +3,26 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Tally — a money tracker that keeps your data yours</title>
-<meta name="description" content="Tally is a self-hosted personal money tracker: log an expense by messaging a Telegram bot, see where it went in an offline-first app. It syncs through your own Google Drive — there is no Tally server.">
+<title>Tally — personal money tracker</title>
+<meta name="description" content="Tally is a personal money tracking application for Android and iOS. It records your income, expenses and transfers, and can sync them between your own devices through your own Google Drive.">
 <meta name="color-scheme" content="dark light">
+<meta name="application-name" content="Tally">
+<meta property="og:title" content="Tally — personal money tracker">
+<meta property="og:description" content="Tally records your income, expenses and transfers and shows you where your money went. It syncs through your own Google Drive.">
+<meta property="og:image" content="https://tally.wapp.uz/tally-logo-512.png">
+<meta property="og:url" content="https://tally.wapp.uz/">
+<meta property="og:type" content="website">
 <link rel="stylesheet" href="style.css">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='28' fill='%23c8f55a'/><text y='72' x='50' text-anchor='middle' font-family='sans-serif' font-size='62' font-weight='bold' fill='%2310120b'>T</text></svg>">
+<link rel="icon" href="tally-logo-120.png">
+
+<!-- Google Search Console verification.
+     Search Console → Add property → paste the meta tag it gives you on the
+     line below, deploy, then press Verify. Google will not pass brand
+     verification for an OAuth consent screen whose home page sits on a domain
+     that is not verified to the same account.
+
+     <meta name="google-site-verification" content="PASTE_TOKEN_HERE">
+-->
 </head>
 <body>
 
@@ -15,88 +30,126 @@
 
 <header>
   <div class="bar">
-    <a class="mark" href="index.html"><span class="glyph">T</span> Tally</a>
+    <a class="mark" href="/"><img class="glyph" src="tally-logo-120.png" width="34" height="34" alt="Tally logo"> Tally</a>
     <nav>
-      <a href="privacy.html">Privacy</a>
-      <a href="terms.html">Terms</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
     </nav>
   </div>
 </header>
 
 <main>
 
-  <h1>Your money data<br><span class="quiet">stays yours.</span></h1>
+  <p class="eyebrow">Personal money tracker · Android &amp; iOS</p>
+  <h1>Tally</h1>
+
+  <p class="tagline">
+    Tally is a personal money tracking application for Android and iOS. It
+    records what you earn, what you spend and what you move between your own
+    accounts, and shows you where your money went.
+  </p>
 
   <p class="lede">
-    Tally is a personal money tracker you run yourself. Log an expense by
-    messaging a Telegram bot — <code>250 groceries</code>, done — and see where
-    it went in an app that works fully offline. It syncs through
-    <strong>your own Google Drive</strong>. There is no Tally server, and no
-    account to sign up for.
+    It runs on your phone and works with no internet connection. Connecting
+    <strong>your own Google Drive</strong> is optional, and lets Tally keep two
+    of your own devices showing the same records. There is no Tally server, no
+    account to create and nothing to sign up for.
   </p>
 
-  <div class="grid">
-    <div class="card">
-      <span class="emoji" aria-hidden="true">🤖</span>
-      <h3>Three seconds to log</h3>
-      <p>Message the bot in plain language. It learns your shorthand, so next
-         time it takes zero taps.</p>
-    </div>
-    <div class="card">
-      <span class="emoji" aria-hidden="true">📱</span>
-      <h3>Offline first</h3>
-      <p>The app never waits on a network. With no Drive connected at all it is
-         still a complete tracker.</p>
-    </div>
-    <div class="card">
-      <span class="emoji" aria-hidden="true">🗄️</span>
-      <h3>Your Drive, your files</h3>
-      <p>Both halves exchange readable JSON in one folder of your Drive. That
-         folder doubles as your backup.</p>
-    </div>
-  </div>
+  <h2>What Tally does</h2>
 
-  <h2>What Tally can see in your Google Drive</h2>
+  <ul>
+    <li><strong>Records transactions</strong> — an amount, a category, the
+      account the money moved through, an optional note, and when it
+      happened.</li>
+    <li><strong>Tracks accounts</strong> — cash, cards, savings and investment
+      pots, each with its own running balance.</li>
+    <li><strong>Moves money between them</strong> without counting it as
+      spending, so putting money aside does not read as losing it.</li>
+    <li><strong>Summarises</strong> a day, a month or a custom span: income,
+      spending, a breakdown by category, and trends over time.</li>
+    <li><strong>Accepts entries from a Telegram bot</strong> you run yourself,
+      so logging an expense is one short message rather than opening an
+      app.</li>
+    <li><strong>Exports and imports</strong> your data as a JSON backup or a
+      CSV spreadsheet, so you can leave at any time.</li>
+    <li><strong>Works entirely offline.</strong> Connecting Google Drive is
+      optional; without it Tally is still a complete tracker.</li>
+  </ul>
+
+  <h2>Why Tally asks for access to Google Drive</h2>
 
   <p>
-    Tally asks for exactly one Google permission,
-    <code>drive.file</code>, described by Google as
-    <em>“See, edit, create, and delete only the specific Google Drive files you
-    use with this app.”</em> In practice that means:
+    Tally has no servers of its own, so it needs somewhere neutral to leave a
+    file when your phone and your Telegram bot need to agree on what you have
+    recorded. It uses your Google Drive for exactly that, and for nothing else.
   </p>
+
+  <p>It requests a single Google permission:</p>
 
   <div class="card">
-    <dl>
-      <dt>It can read and write the files it made</dt>
-      <dd>One folder named <code>Tally</code>, holding one small JSON snapshot
-          per device — <code>tally-&lt;device-id&gt;.json</code>.</dd>
-      <dt>It cannot see anything else you own</dt>
-      <dd>Not your documents, not your photos, not files another app created.
-          Google enforces this, not us.</dd>
-      <dt>Nothing is sent anywhere else</dt>
-      <dd>Your phone and your server talk to Google Drive and to each other
-          through those files. No third party is involved, and neither are we.</dd>
-    </dl>
+    <p style="margin-bottom:6px"><code>https://www.googleapis.com/auth/drive.file</code></p>
+    <p style="margin-bottom:0; color:var(--text-dim)">
+      “See, edit, create, and delete only the specific Google Drive files you
+      use with this app.”
+    </p>
   </div>
 
+  <p>Here is precisely what Tally does with it:</p>
+
+  <ol>
+    <li>Creates one folder in your Drive, named <code>Tally</code>.</li>
+    <li>Writes one small JSON file inside it per device —
+      <code>tally-&lt;device-id&gt;.json</code> — containing that device's copy
+      of your transactions, categories, accounts and settings.</li>
+    <li>Reads the file your other device wrote, and merges the two so both
+      ends show the same records.</li>
+  </ol>
+
+  <p>
+    That is the whole use. Tally does not read, list or modify any other file in
+    your Drive — the <code>drive.file</code> permission does not allow it to,
+    and Google enforces that, not us. It does not request access to your email,
+    your contacts, your calendar, your profile or any other Google service.
+  </p>
+
+  <p>
+    <strong>Tally's use and transfer of information received from Google APIs to
+    any other app will adhere to the
+    <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google
+    API Services User Data Policy</a>, including the Limited Use
+    requirements.</strong>
+  </p>
+
+  <h2>Where your data lives</h2>
+
+  <p>
+    On your phone, on the server you run, and — only if you connect it — in the
+    <code>Tally</code> folder of your own Google Drive, as readable JSON you can
+    open yourself. The people who wrote Tally operate no service, receive no
+    copy of your records and cannot see them. There is nothing to sign up for
+    and no account to create.
+  </p>
+
   <p class="note">
-    <strong>There is no “our server”.</strong> Tally is software you host. The
-    people who wrote it operate nothing, receive nothing and can see nothing.
-    Read the <a href="privacy.html">privacy policy</a> for the detail.
+    Full detail in the <a href="/privacy">privacy policy</a>, including how
+    to revoke Tally's access to Drive and delete everything it has stored.
   </p>
 
-  <h2>Run it yourself</h2>
+  <h2>Getting Tally</h2>
 
   <p>
-    The whole backend is one Go binary — Telegram bot, Drive sync and SQLite —
-    in one container, and it only ever makes outbound calls. No exposed port,
-    no public hostname, no TLS certificate to renew.
+    Tally is open-source software under the MIT licence. You install the app on
+    your phone and, if you want the Telegram bot and syncing, run the server
+    half yourself — one container that only ever makes outbound calls, so it
+    needs no public hostname and no certificate.
   </p>
 
   <p>
+    <span class="pill">Android &amp; iOS</span>
     <span class="pill">Telegram bot</span>
-    <span class="pill">Flutter app · Android &amp; iOS</span>
     <span class="pill">Google Drive sync</span>
+    <span class="pill">Works offline</span>
     <span class="pill">English · Русский · Oʻzbekcha</span>
     <span class="pill">MIT licensed</span>
   </p>
@@ -105,10 +158,10 @@
 
 <footer>
   <div class="footer-row">
-    <span>Tally — open source, MIT licensed.</span>
+    <span>Tally — personal money tracker. Open source, MIT licensed.</span>
     <span class="spacer"></span>
-    <a href="privacy.html">Privacy</a>
-    <a href="terms.html">Terms</a>
+    <a href="/privacy">Privacy Policy</a>
+    <a href="/terms">Terms of Service</a>
   </div>
 </footer>
 

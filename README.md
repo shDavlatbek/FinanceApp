@@ -24,7 +24,9 @@ Both the app and the bot sign in to *your* Google account using **one** OAuth cl
 
 1. Create a project at [console.cloud.google.com](https://console.cloud.google.com) and enable the **Google Drive API**.
 2. Configure the **OAuth consent screen**: External user type, add yourself as the user.
-3. **Publish the consent screen ("In production").** This matters: while it is in *Testing*, Google issues refresh tokens that **expire after 7 days** and your sync will silently stop working a week later. Tally only asks for the `drive.file` scope, which is non-sensitive, so publishing needs **no verification review**.
+3. **Publish the consent screen ("In production").** This matters: while it is in *Testing*, Google issues refresh tokens that **expire after 7 days** and your sync will silently stop working a week later.
+
+   Tally only asks for the `drive.file` scope, which is non-sensitive, so there is **no sensitive-scope security review** — but publishing still puts the consent screen through **brand verification**, which checks the app name, the logo, and the home page and policy links. That check fails unless the home page is on a domain you have **verified in Google Search Console under the same account**, the page states what the app does, and the name on the page matches the name on the consent screen. `site/` is a ready-made home page, privacy policy and terms that satisfy the content half; see [site/README.md](site/README.md) for the domain-verification half.
 4. Create an **OAuth client ID** of type **"TVs and Limited Input devices"**. Note the client ID and secret — both the server and the app use this same client.
 
 Tally can only ever see the files it creates in your Drive. It cannot read anything else you own.

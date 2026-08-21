@@ -94,7 +94,7 @@ header {
   letter-spacing: -0.02em;
 }
 
-.mark .glyph {
+.mark .glyph:not(img) {
   width: 34px;
   height: 34px;
   border-radius: 11px;
@@ -133,6 +133,24 @@ h1 {
 }
 
 h1 .quiet { color: var(--text-dim); }
+
+/* The sentence directly under the app name, and the most important one on the
+   site: it is what a reviewer reads to answer "what is this app for?". Full
+   ink, not the dim colour, and set below the name so the NAME still wins. */
+.tagline {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.4;
+  font-size: clamp(1.15rem, 2.9vw, 1.42rem);
+  color: var(--text);
+  margin: 16px 0 0;
+  max-width: 36rem;
+  text-wrap: pretty;
+}
+
+/* The header mark is an <img> of the same file uploaded to the OAuth consent
+   screen, so the branding is identical on both. */
+img.glyph { border-radius: 11px; display: block; }
 
 .lede {
   font-size: clamp(1.05rem, 2.6vw, 1.28rem);
@@ -188,9 +206,10 @@ code {
   word-break: break-word;
 }
 
-ul { margin: 0 0 16px; padding-left: 1.15rem; }
+ul, ol { margin: 0 0 16px; padding-left: 1.25rem; }
 li { margin-bottom: 9px; }
-li::marker { color: var(--accent); }
+li::marker { color: var(--accent); font-weight: 600; }
+ol { counter-reset: none; }
 
 /* ---- blocks ------------------------------------------------------------ */
 
