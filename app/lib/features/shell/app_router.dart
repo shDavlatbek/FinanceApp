@@ -1,10 +1,12 @@
-/// go_router wiring: shell with 4 branches + root-level categories route.
+/// go_router wiring: shell with 4 branches + root-level categories and
+/// accounts routes.
 library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../accounts/accounts_screen.dart';
 import '../categories/categories_screen.dart';
 import '../history/history_screen.dart';
 import '../home/home_screen.dart';
@@ -57,6 +59,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/categories',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const CategoriesScreen(),
+      ),
+      GoRoute(
+        path: '/accounts',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AccountsScreen(),
       ),
     ],
   );

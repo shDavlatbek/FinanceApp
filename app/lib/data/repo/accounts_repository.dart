@@ -186,6 +186,44 @@ class AccountsRepository {
     _onMutation?.call();
   }
 
+  /// Rewrites `sort_order` to each id's index in [orderedIds] (a full
+  /// ordering of the live accounts). Every touched row is bumped and marked
+  /// dirty so the order travels to the other peer under last-write-wins.
+  Future<void> reorder(List<String> orderedIds) async {
+    if (orderedIds.isEmpty) return;
+    final int nowMs = _now();
+    await _db.transaction(() async {
+      for (int i = 0; i < orderedIds.length; i++) {
+        await (_db.update(_db.accounts)
+              ..where((a) => a.id.equals(orderedIds[i])))
+            .write(AccountsCompanion(
+          sortOrder: Value(i),
+          updatedAtMs: Value(nowMs),
+          dirty: const Value(true),
+        ));
+      }
+    });
+    _onMutation?.call();
+  }
+
+  /// Lifts the tombstone off an archived account.
+  ///
+  /// Archiving is the only destructive action on this screen and it is one
+  /// tap, so it has to be reversible. Clearing the tombstone on the SAME row
+  /// (rather than inserting a fresh account) keeps the id, so every
+  /// transaction booked to it stays attached.
+  Future<void> unarchive(String id) async {
+    final int nowMs = _now();
+    await (_db.update(_db.accounts)..where((a) => a.id.equals(id))).write(
+      AccountsCompanion(
+        deletedAtMs: const Value(null),
+        updatedAtMs: Value(nowMs),
+        dirty: const Value(true),
+      ),
+    );
+    _onMutation?.call();
+  }
+
   /// Resolves the account new entries should book to: the synced
   /// `settings.default_account_id` when it still names a live account,
   /// otherwise the first live account. Never returns an archived account, so

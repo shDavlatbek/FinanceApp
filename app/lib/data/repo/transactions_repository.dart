@@ -270,6 +270,27 @@ class TransactionsRepository {
     _onMutation?.call();
   }
 
+  /// Lifts the tombstone off transaction [id] — the undo behind every
+  /// swipe-to-delete.
+  ///
+  /// Clears the tombstone on the SAME row rather than inserting a copy.
+  /// Re-inserting would mint a new id and rebuild the row from whichever
+  /// fields the caller remembered to pass, which silently dropped
+  /// `account_id`, `to_account_id` and `sort_order` — an undone transfer came
+  /// back as a destination-less transfer, i.e. a row the peers' sanitizer
+  /// throws away.
+  Future<void> restore(String id) async {
+    final nowMs = _now();
+    await (_db.update(_db.transactions)..where((t) => t.id.equals(id))).write(
+      TransactionsCompanion(
+        deletedAtMs: const Value(null),
+        updatedAtMs: Value(nowMs),
+        dirty: const Value(true),
+      ),
+    );
+    _onMutation?.call();
+  }
+
   /// Tombstone soft-delete (sets `deleted_at_ms`; the row is kept forever).
   Future<void> softDelete(String id) async {
     final nowMs = _now();

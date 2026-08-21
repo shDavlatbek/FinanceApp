@@ -681,4 +681,197 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get accountsTitle => 'Accounts';
+
+  @override
+  String get accountsTotalLabel => 'TOTAL BALANCE';
+
+  @override
+  String get accountsEmptyTitle => 'No accounts';
+
+  @override
+  String get accountsEmptyMessage =>
+      'Add a wallet, a card or a savings pot to see where your money sits.';
+
+  @override
+  String get accountNew => 'New account';
+
+  @override
+  String get accountEdit => 'Edit account';
+
+  @override
+  String get accountCreate => 'Create account';
+
+  @override
+  String get accountNameHint => 'Account name';
+
+  @override
+  String get accountEmojiLabel => 'Icon';
+
+  @override
+  String get accountColorLabel => 'Colour';
+
+  @override
+  String get accountKindLabel => 'Type';
+
+  @override
+  String get accountKindCash => 'Cash';
+
+  @override
+  String get accountKindBank => 'Card';
+
+  @override
+  String get accountKindSavings => 'Savings';
+
+  @override
+  String get accountKindInvestment => 'Investments';
+
+  @override
+  String get accountOpeningBalanceLabel => 'Opening balance';
+
+  @override
+  String get accountOpeningBalanceHelp =>
+      'What the account already held before you started tracking. A card in debt takes a minus.';
+
+  @override
+  String get accountArchive => 'Archive account';
+
+  @override
+  String get accountArchiveConfirmTitle => 'Archive this account?';
+
+  @override
+  String accountArchiveConfirmMessage({required String name}) {
+    return '$name disappears from the pickers. Every entry booked to it stays in your history.';
+  }
+
+  @override
+  String accountArchivedSnack({required String name}) {
+    return 'Archived $name';
+  }
+
+  @override
+  String get accountsDefaultLabel => 'Telegram bot books to';
+
+  @override
+  String get accountsDefaultHelp =>
+      'Everything you type to the bot lands here, so it never has to ask.';
+
+  @override
+  String get accountDefaultBadge => 'Bot';
+
+  @override
+  String accountSendTo({required String name}) {
+    return 'Send to $name';
+  }
+
+  @override
+  String get accountsMoveMoney => 'Move money';
+
+  @override
+  String get settingsAccountsValue => 'Balances & default';
+
+  @override
+  String get commonTransfer => 'Transfer';
+
+  @override
+  String get entryAddTransfer => 'Move money';
+
+  @override
+  String get entryFromAccount => 'From';
+
+  @override
+  String get entryToAccount => 'To';
+
+  @override
+  String get entryAccountLabel => 'Account';
+
+  @override
+  String get entryTransferPickTwo => 'Pick two different accounts';
+
+  @override
+  String get entryTransferNoteHint => 'What is this for?';
+
+  @override
+  String get settingsBackupSection => 'Backup';
+
+  @override
+  String get backupExportJsonTitle => 'Export a backup';
+
+  @override
+  String get backupExportJsonSubtitle => 'JSON · restorable';
+
+  @override
+  String get backupExportCsvTitle => 'Export a spreadsheet';
+
+  @override
+  String get backupExportCsvSubtitle => 'CSV · read-only';
+
+  @override
+  String get backupImportTitle => 'Import a backup';
+
+  @override
+  String get backupImportSubtitle => 'Merges · newest wins';
+
+  @override
+  String get backupCsvNotice =>
+      'A spreadsheet cannot carry deletions or settings, so it is an export only — restore from a JSON backup.';
+
+  @override
+  String get backupImportConfirmTitle => 'Import this backup?';
+
+  @override
+  String get backupImportConfirmMessage =>
+      'Rows are merged, and the newer version of each one wins. Nothing you have added since the backup is lost, and importing the same file twice changes nothing.';
+
+  @override
+  String get backupImportConfirmAction => 'Import';
+
+  @override
+  String backupSavedSnack({required String file}) {
+    return 'Saved $file';
+  }
+
+  @override
+  String get backupCancelledSnack => 'Nothing saved';
+
+  @override
+  String backupFailedSnack({required String message}) {
+    return 'Export failed: $message';
+  }
+
+  @override
+  String backupImportFailedSnack({required String message}) {
+    return 'Cannot read that file: $message';
+  }
+
+  @override
+  String get backupImportNothingSnack =>
+      'Nothing to merge — your data is already up to date';
+
+  @override
+  String backupImportedSnack({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count rows merged',
+      one: '$count row merged',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String backupImportSkippedSnack({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count bad rows skipped',
+      one: '$count bad row skipped',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountOpeningBalanceInvalid => 'Not a number';
 }

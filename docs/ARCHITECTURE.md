@@ -290,13 +290,17 @@ Import is a **merge under strict last-write-wins**, identical to a sync pass: a 
 - tombstones in the file propagate, so a deletion made before the backup is honoured rather than resurrecting the row;
 - the file's own `device_id` is ignored on import — the importing peer keeps its identity and never adopts the exporter's.
 
+Rows an import applies are marked **dirty** (without bumping `updated_at_ms`), so this peer republishes them on its next Drive pass. A restored row exists in no peer's snapshot file; without that flag the restore would live on one device while sync kept reporting success. A row arriving over **Drive** is not marked dirty — the peer that wrote it has already published it — which is the single difference between the two callers of the shared merge.
+
 Because the format is a snapshot, a file lifted straight out of the Drive folder restores exactly as well as one the app exported.
 
 ### CSV export — the spreadsheet path
 
 Export only. CSV cannot carry tombstones or settings, so it is not a restore path and must never be offered as one.
 
-File name `tally-<YYYYMMDD-HHMMSS>.csv`, RFC 4180, UTF-8 **with a BOM** (without it Excel mis-decodes Cyrillic and Uzbek), `\r\n` line endings, comma-separated. Non-deleted transactions only, newest first.
+File name `tally-<YYYYMMDD-HHMMSS>.csv` (stamped in **local** time — the owner reads it in a file listing), RFC 4180, UTF-8 **with a BOM** (without it Excel mis-decodes Cyrillic and Uzbek), `\r\n` line endings, comma-separated. Non-deleted transactions only.
+
+Row order is the app's own **display order**: newest local day first, then `sort_order`, then newest time — the same `sortedForDisplay` rule the ledger screens use. A spreadsheet is a view of the ledger, not a different ledger, so a day the owner has hand-ordered exports in the order they placed it.
 
 ```csv
 date,kind,amount,currency,category,account,to_account,note
@@ -307,7 +311,8 @@ date,kind,amount,currency,category,account,to_account,note
 - `date` is the `occurred_at` calendar date in UTC, `YYYY-MM-DD`.
 - `amount` is **always** a plain decimal with a `.` separator, no grouping, scaled by the currency's exponent — machine-parseable regardless of UI language. It is never the localized money string.
 - `kind` is the raw `income` / `expense` / `transfer`, not a translation, so a spreadsheet formula can filter on it.
-- `category`, `account` and `to_account` are **display names** in the current UI language (the seed-name rule applies); `category` is empty for a transfer and `to_account` is empty for everything else.
+- `category`, `account` and `to_account` are **display names** in the current UI language (the seed-name rule applies); `category` is empty for a transfer and `to_account` is empty for everything else. An id nothing resolves — only a hand-edited peer file produces one — leaves the cell **empty** rather than leaking a raw UUID into a human-facing column.
+- Every field is quoted per RFC 4180 when it contains a comma, a quote or a line break, with embedded quotes doubled. A note reading `weekly shop, "big" one` has to survive verbatim; a reader that splits it into three columns has silently corrupted the owner's data.
 
 ## Telegram bot
 

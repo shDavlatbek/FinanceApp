@@ -160,7 +160,8 @@ const String snapshotNameSuffix = '.json';
 const String snapshotMimeType = 'application/json';
 
 /// `schema` field of the snapshot envelope written by this build. Schema 2
-/// added accounts, per-transaction account ids and the `transfer` kind.
+/// added accounts, per-transaction account ids and the `transfer` kind;
+/// schema 3 added `sort_order`.
 const int snapshotSchemaVersion = 3;
 
 /// Oldest snapshot schema this build still reads. A schema-1 file predates

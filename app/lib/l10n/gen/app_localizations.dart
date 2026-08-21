@@ -1269,6 +1269,324 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, one{Last day} other{Last {count} days}}'**
   String statsLastDays({required int count});
+
+  /// Title of the Accounts screen
+  ///
+  /// In en, this message translates to:
+  /// **'Accounts'**
+  String get accountsTitle;
+
+  /// Caption above the summed balance of every live account
+  ///
+  /// In en, this message translates to:
+  /// **'TOTAL BALANCE'**
+  String get accountsTotalLabel;
+
+  /// Empty-state title on the Accounts screen
+  ///
+  /// In en, this message translates to:
+  /// **'No accounts'**
+  String get accountsEmptyTitle;
+
+  /// Empty-state body on the Accounts screen
+  ///
+  /// In en, this message translates to:
+  /// **'Add a wallet, a card or a savings pot to see where your money sits.'**
+  String get accountsEmptyMessage;
+
+  /// Button that opens the sheet for creating an account
+  ///
+  /// In en, this message translates to:
+  /// **'New account'**
+  String get accountNew;
+
+  /// Title of the account sheet when editing
+  ///
+  /// In en, this message translates to:
+  /// **'Edit account'**
+  String get accountEdit;
+
+  /// Confirm button in the account sheet when creating
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get accountCreate;
+
+  /// Placeholder in the account name field
+  ///
+  /// In en, this message translates to:
+  /// **'Account name'**
+  String get accountNameHint;
+
+  /// Label above the emoji picker in the account sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get accountEmojiLabel;
+
+  /// Label above the color picker in the account sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Colour'**
+  String get accountColorLabel;
+
+  /// Label above the account type picker
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get accountKindLabel;
+
+  /// Account type: physical cash
+  ///
+  /// In en, this message translates to:
+  /// **'Cash'**
+  String get accountKindCash;
+
+  /// Account type: a bank card or bank account
+  ///
+  /// In en, this message translates to:
+  /// **'Card'**
+  String get accountKindBank;
+
+  /// Account type: money put aside
+  ///
+  /// In en, this message translates to:
+  /// **'Savings'**
+  String get accountKindSavings;
+
+  /// Account type: invested money
+  ///
+  /// In en, this message translates to:
+  /// **'Investments'**
+  String get accountKindInvestment;
+
+  /// Label above the opening balance field
+  ///
+  /// In en, this message translates to:
+  /// **'Opening balance'**
+  String get accountOpeningBalanceLabel;
+
+  /// Explains what an opening balance is, and that it may be negative
+  ///
+  /// In en, this message translates to:
+  /// **'What the account already held before you started tracking. A card in debt takes a minus.'**
+  String get accountOpeningBalanceHelp;
+
+  /// Destructive action in the account sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Archive account'**
+  String get accountArchive;
+
+  /// Title of the archive-account confirmation dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Archive this account?'**
+  String get accountArchiveConfirmTitle;
+
+  /// Body of the archive-account confirmation dialog. Reassures that history survives.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} disappears from the pickers. Every entry booked to it stays in your history.'**
+  String accountArchiveConfirmMessage({required String name});
+
+  /// Snackbar confirming an account went to the archive
+  ///
+  /// In en, this message translates to:
+  /// **'Archived {name}'**
+  String accountArchivedSnack({required String name});
+
+  /// Label of the row picking which account the Telegram bot books to
+  ///
+  /// In en, this message translates to:
+  /// **'Telegram bot books to'**
+  String get accountsDefaultLabel;
+
+  /// Explains why the bot needs a default account chosen in the app
+  ///
+  /// In en, this message translates to:
+  /// **'Everything you type to the bot lands here, so it never has to ask.'**
+  String get accountsDefaultHelp;
+
+  /// Badge on the account the bot books to
+  ///
+  /// In en, this message translates to:
+  /// **'Bot'**
+  String get accountDefaultBadge;
+
+  /// Quick action that starts a transfer INTO the named account
+  ///
+  /// In en, this message translates to:
+  /// **'Send to {name}'**
+  String accountSendTo({required String name});
+
+  /// Button on the Accounts screen that opens a transfer
+  ///
+  /// In en, this message translates to:
+  /// **'Move money'**
+  String get accountsMoveMoney;
+
+  /// Trailing hint on the Accounts row in Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Balances & default'**
+  String get settingsAccountsValue;
+
+  /// Third transaction kind: money moved between your own accounts
+  ///
+  /// In en, this message translates to:
+  /// **'Transfer'**
+  String get commonTransfer;
+
+  /// Confirm button in the entry sheet when the kind is transfer
+  ///
+  /// In en, this message translates to:
+  /// **'Move money'**
+  String get entryAddTransfer;
+
+  /// Label above the source-account picker in a transfer
+  ///
+  /// In en, this message translates to:
+  /// **'From'**
+  String get entryFromAccount;
+
+  /// Label above the destination-account picker in a transfer
+  ///
+  /// In en, this message translates to:
+  /// **'To'**
+  String get entryToAccount;
+
+  /// Label above the account picker for an income or expense
+  ///
+  /// In en, this message translates to:
+  /// **'Account'**
+  String get entryAccountLabel;
+
+  /// Hint shown while a transfer still names the same account on both ends
+  ///
+  /// In en, this message translates to:
+  /// **'Pick two different accounts'**
+  String get entryTransferPickTwo;
+
+  /// Placeholder in the note field of a transfer
+  ///
+  /// In en, this message translates to:
+  /// **'What is this for?'**
+  String get entryTransferNoteHint;
+
+  /// Settings section header for file export and import
+  ///
+  /// In en, this message translates to:
+  /// **'Backup'**
+  String get settingsBackupSection;
+
+  /// Row that exports a full JSON backup
+  ///
+  /// In en, this message translates to:
+  /// **'Export a backup'**
+  String get backupExportJsonTitle;
+
+  /// Trailing hint on the JSON export row
+  ///
+  /// In en, this message translates to:
+  /// **'JSON · restorable'**
+  String get backupExportJsonSubtitle;
+
+  /// Row that exports transactions as a spreadsheet
+  ///
+  /// In en, this message translates to:
+  /// **'Export a spreadsheet'**
+  String get backupExportCsvTitle;
+
+  /// Trailing hint on the CSV export row
+  ///
+  /// In en, this message translates to:
+  /// **'CSV · read-only'**
+  String get backupExportCsvSubtitle;
+
+  /// Row that imports a JSON backup
+  ///
+  /// In en, this message translates to:
+  /// **'Import a backup'**
+  String get backupImportTitle;
+
+  /// Trailing hint on the import row
+  ///
+  /// In en, this message translates to:
+  /// **'Merges · newest wins'**
+  String get backupImportSubtitle;
+
+  /// Notice explaining that CSV is not a restore path
+  ///
+  /// In en, this message translates to:
+  /// **'A spreadsheet cannot carry deletions or settings, so it is an export only — restore from a JSON backup.'**
+  String get backupCsvNotice;
+
+  /// Title of the import confirmation dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Import this backup?'**
+  String get backupImportConfirmTitle;
+
+  /// Body of the import confirmation dialog. States the merge rule plainly.
+  ///
+  /// In en, this message translates to:
+  /// **'Rows are merged, and the newer version of each one wins. Nothing you have added since the backup is lost, and importing the same file twice changes nothing.'**
+  String get backupImportConfirmMessage;
+
+  /// Confirm button of the import dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get backupImportConfirmAction;
+
+  /// Snackbar after a file was written
+  ///
+  /// In en, this message translates to:
+  /// **'Saved {file}'**
+  String backupSavedSnack({required String file});
+
+  /// Snackbar when the owner backed out of the file dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing saved'**
+  String get backupCancelledSnack;
+
+  /// Snackbar when writing the file failed
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed: {message}'**
+  String backupFailedSnack({required String message});
+
+  /// Snackbar when the chosen file is not a readable snapshot
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot read that file: {message}'**
+  String backupImportFailedSnack({required String message});
+
+  /// Snackbar when a merge applied nothing — an idempotent second import
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to merge — your data is already up to date'**
+  String get backupImportNothingSnack;
+
+  /// Snackbar summarising a successful import. Russian needs one/few/many/other.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} row merged} other{{count} rows merged}}'**
+  String backupImportedSnack({required int count});
+
+  /// Appended to the import summary when the sanitizer dropped rows. Russian needs one/few/many/other.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} bad row skipped} other{{count} bad rows skipped}}'**
+  String backupImportSkippedSnack({required int count});
+
+  /// Error under the opening-balance field when the typed value is not a number
+  ///
+  /// In en, this message translates to:
+  /// **'Not a number'**
+  String get accountOpeningBalanceInvalid;
 }
 
 class _AppLocalizationsDelegate

@@ -1,5 +1,80 @@
 # Tally — build status
 
+## v5 (the Flutter half of accounts + export/import) — built 2026-08-21
+
+Closes the three items v3 left open on the app side: the **Accounts screen**,
+the **transfer flow in the entry sheet**, and the **export/import screens**.
+The data layer, sync, balances and rendering were already in place and tested;
+what landed here is the UI on top of them, plus the CSV writer.
+
+### Verified on 2026-08-21 (run directly against the tree)
+
+| check | result |
+|---|---|
+| `go vet ./...` · `go build ./...` · `go test -count=1 ./...` | clean (untouched this round) |
+| `flutter analyze` | **0 issues** |
+| `flutter test` | **300 pass**, 7 skipped (capture harness) |
+| screens rendered and eyeballed | Accounts, account editor, transfer sheet, Backup section |
+
+### What was built
+
+- **Accounts screen** (`/accounts`, reached from Settings): total-balance hero
+  with the count-up tween, one-tap `Send to Savings` / `Send to Investments`
+  chips for every savings and investment account, live derived balances,
+  drag-to-reorder, and the picker for the account the Telegram bot books to.
+- **Account editor**: name, type, emoji, colour, and an **opening balance that
+  accepts a minus** — a card in debt is real data, and it is the one money
+  field in the app where a negative is not a typo. Archive is behind a
+  confirmation and undoable.
+- **Transfers in the entry sheet**: the kind pill gained a third segment, and a
+  transfer replaces the category grid with `From` / `To` account pickers that
+  each exclude the other's choice, so a self-transfer cannot be selected at
+  all. Expenses and incomes now also carry an account picker; before this they
+  always booked to the seed cash account.
+- **Export / import** in Settings: JSON backup, CSV spreadsheet, and import
+  behind a dialog that states the merge rule. `data/backup/` holds the logic;
+  `file_picker` is confined to one file (`file_picker_transport.dart`) behind
+  the `BackupFileTransport` interface, so every rule above is unit-tested with
+  no platform channel.
+- **The merge is now shared, not duplicated.** `drive/snapshot_merge.dart` holds
+  the one last-write-wins merge; the sync engine and file import both call it.
+  Import passes `markDirty: true`, sync does not — see the contract.
+
+### Bugs found and fixed
+
+- **The CSV export wrote empty category and account columns.** The names were
+  read from `categoriesByIdProvider` / `accountsByIdProvider`, which are derived
+  from streams nothing on the Settings screen subscribes to, so reading them
+  cold returned an empty map. The service now loads the rows from the database
+  itself and the UI only supplies the localizer. Caught by
+  `backup_settings_ui_test.dart`, which is the only place the two layers meet.
+- **Undo of a deleted transfer resurrected a broken row.** Both undo paths
+  re-inserted from the fields the call site remembered, which minted a new id
+  and silently dropped `account_id`, `to_account_id` and `sort_order` — an
+  undone transfer came back with no destination, i.e. a row the peers'
+  sanitizer throws away. Replaced with `restore(id)`, which lifts the tombstone
+  off the same row.
+- **The entry sheet could book into a hole.** The source account fell back to
+  the synced `default_account_id` without checking it still names a live
+  account, so archiving the default left new entries pointing at an archived
+  row. Now mirrors `AccountsRepository.resolveDefault`.
+- **A transfer opened for editing had `_categoryId = ''`**, not null, so the
+  Save button unlocked on a row with an empty category id.
+- **The entry sheet's date chips overflowed** on a narrow phone (three chips
+  share one row, and translations are longer than English). The label is now
+  flexible and ellipsizes — a date may, money never.
+
+### Still not done
+
+- **No real Google Drive round trip has ever happened**, and the Telegram bot
+  has never talked to Telegram. Both are still tested only against in-memory
+  fakes.
+- **`file_picker` has never run on a device.** The save/pick calls are behind a
+  faked transport in tests; the platform dialogs themselves are unexercised.
+  First real test: export a backup on a phone and re-import it.
+- Release APK: `app/android/app/build.gradle.kts` still signs release with the
+  **debug** key. Needs a keystore before an APK means anything.
+
 ## v3 (accounts + transfers + day lens) — app and server both built
 
 Requested by the owner on 2026-08-20: accounts (cash / card / savings /
@@ -52,7 +127,7 @@ being edited underneath them). The ones that survived were real:
   them as spending, and a transfer rendered as a green `+` labelled
   "Uncategorized".
 
-### Not done
+### Not done at the time (all three landed in v5 above)
 
 - **Accounts screen** (add / edit / archive / reorder, opening balance) and the
   **transfer flow in the entry sheet**. The data layer, sync, balances and

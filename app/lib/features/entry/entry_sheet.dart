@@ -1,6 +1,12 @@
 /// Full-height transaction entry sheet — springy slide-up, live-formatted
 /// oversized amount, custom numpad, kind pill, emoji category grid, note and
 /// date chips. Also used to edit an existing transaction.
+///
+/// Three kinds share the sheet. An expense or an income picks a category and
+/// the account the money moves through; a **transfer** picks two accounts and
+/// no category at all, because moving your own money between your own pockets
+/// is not spending and must stay out of every total
+/// (docs/ARCHITECTURE.md § transaction).
 library;
 
 import 'package:flutter/material.dart';
@@ -11,6 +17,7 @@ import '../../core/dates.dart';
 import '../../core/money.dart';
 import '../../core/theme.dart';
 import '../../l10n/l10n.dart';
+import '../common/account_chip.dart';
 import '../common/buttons.dart';
 import '../common/kind_pill.dart';
 import 'numpad.dart';
@@ -18,7 +25,17 @@ import 'package:tally/data/providers.dart';
 
 /// Opens the sheet as a custom route: springy slide-up (easeOutBack, 420 ms),
 /// clean ease-in on the way down.
-Future<void> showEntrySheet(BuildContext context, {Transaction? existing}) {
+///
+/// [initialKind] and [initialToAccountId] are what make "send to savings" one
+/// tap: the Accounts screen opens the sheet already in transfer mode with the
+/// destination chosen, leaving only the amount to type. Both are ignored when
+/// [existing] is given — an edit always starts from the row on screen.
+Future<void> showEntrySheet(
+  BuildContext context, {
+  Transaction? existing,
+  String? initialKind,
+  String? initialToAccountId,
+}) {
   final surface = context.tokens.surface;
   return Navigator.of(context, rootNavigator: true).push(
     PageRouteBuilder(
@@ -26,7 +43,11 @@ Future<void> showEntrySheet(BuildContext context, {Transaction? existing}) {
       barrierColor: Colors.black.withValues(alpha: 0.55),
       transitionDuration: const Duration(milliseconds: 420),
       reverseTransitionDuration: const Duration(milliseconds: 240),
-      pageBuilder: (_, _, _) => EntrySheet(existing: existing),
+      pageBuilder: (_, _, _) => EntrySheet(
+        existing: existing,
+        initialKind: initialKind,
+        initialToAccountId: initialToAccountId,
+      ),
       transitionsBuilder: (context, animation, secondary, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -59,9 +80,21 @@ Future<void> showEntrySheet(BuildContext context, {Transaction? existing}) {
 }
 
 class EntrySheet extends ConsumerStatefulWidget {
-  const EntrySheet({super.key, this.existing});
+  const EntrySheet({
+    super.key,
+    this.existing,
+    this.initialKind,
+    this.initialToAccountId,
+  });
 
   final Transaction? existing;
+
+  /// `Kind.expense` (the default), `Kind.income` or `Kind.transfer`.
+  final String? initialKind;
+
+  /// Pre-chosen transfer destination, for the Accounts screen's one-tap
+  /// "send to savings".
+  final String? initialToAccountId;
 
   @override
   ConsumerState<EntrySheet> createState() => _EntrySheetState();
@@ -71,20 +104,39 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
   late String _kind;
   late String _raw;
   String? _categoryId;
+
+  /// The account money moves through — where an expense leaves from, where an
+  /// income arrives, and the SOURCE of a transfer. Null means "not chosen by
+  /// hand", which resolves to the synced default account at save time.
+  String? _accountId;
+
+  /// The DESTINATION of a transfer, and empty for every other kind.
+  String? _toAccountId;
   late DateTime _date;
   late final TextEditingController _note;
   bool _saving = false;
 
   bool get _editing => widget.existing != null;
+  bool get _isTransfer => _kind == Kind.transfer;
 
   @override
   void initState() {
     super.initState();
     final tx = widget.existing;
     final currency = ref.read(currencyProvider).value ?? defaultCurrency;
-    _kind = tx?.kind ?? Kind.expense;
-    _raw = tx == null ? '' : _minorToRaw(tx.amountMinor, currency);
-    _categoryId = tx?.categoryId;
+    _kind = tx?.kind ??
+        (Kind.isValidTransaction(widget.initialKind ?? '')
+            ? widget.initialKind!
+            : Kind.expense);
+    _raw = tx == null ? '' : minorToEditable(tx.amountMinor, currency);
+    // A transfer stores an EMPTY category by contract; carrying that through
+    // as `''` would look like a chosen category and let Save through with a
+    // row no peer would accept.
+    _categoryId = (tx == null || tx.categoryId.isEmpty) ? null : tx.categoryId;
+    _accountId = tx?.accountId;
+    _toAccountId = tx == null
+        ? widget.initialToAccountId
+        : (tx.toAccountId.isEmpty ? null : tx.toAccountId);
     _date = tx == null ? DateTime.now() : occurredAtToLocal(tx.occurredAt);
     _note = TextEditingController(text: tx?.note ?? '');
   }
@@ -95,13 +147,28 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     super.dispose();
   }
 
-  String _minorToRaw(int minor, String code) {
-    final d = decimalDigitsFor(code);
-    if (d == 0) return '$minor';
-    final per = minorUnitsPerMajor(code);
-    final whole = minor ~/ per;
-    final frac = minor % per;
-    return frac == 0 ? '$whole' : '$whole.${frac.toString().padLeft(d, '0')}';
+  /// The source account this sheet will actually write, given the live account
+  /// list and the synced default.
+  ///
+  /// Falling back to the default account is what keeps the sheet a one-tap
+  /// flow: most entries come out of the same pocket, so the picker is there to
+  /// override the default, not to be answered every time.
+  String? _resolveFrom(List<Account> accounts, String settingsDefault) {
+    if (_accountId != null) return _accountId;
+    // A transfer whose destination is already the default account would open
+    // on an invalid self-transfer, so the source steps aside to another one.
+    final String? avoid = _isTransfer ? _toAccountId : null;
+    if (settingsDefault != avoid &&
+        accounts.any((Account a) => a.id == settingsDefault)) {
+      return settingsDefault;
+    }
+    // The default names an archived account (or none has loaded yet). Fall
+    // back to the first live one, never to an archived id — writes must not go
+    // into a hole. Same rule as `AccountsRepository.resolveDefault`.
+    for (final Account a in accounts) {
+      if (a.id != avoid) return a.id;
+    }
+    return null;
   }
 
   void _onDigit(String d, int decimals) {
@@ -131,6 +198,9 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     if (kind == _kind) return;
     setState(() {
       _kind = kind;
+      // Categories are per-kind, so the old pick is meaningless under the new
+      // one. The two account choices survive the switch: they are still the
+      // same pockets, and re-picking them would be busywork.
       _categoryId = null;
     });
   }
@@ -177,8 +247,17 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     }
   }
 
-  Future<void> _save(int minor) async {
-    if (_saving || _categoryId == null) return;
+  Future<void> _save(int minor, String fromId) async {
+    if (_saving) return;
+    final String? toId = _toAccountId;
+    if (_isTransfer) {
+      // Guarded here as well as in the disabled button: a self-transfer is a
+      // no-op that would still show in history as money moving, and the
+      // repository throws on it.
+      if (toId == null || toId == fromId) return;
+    } else if (_categoryId == null) {
+      return;
+    }
     setState(() => _saving = true);
     final repo = ref.read(transactionsRepoProvider);
     final note = _note.text.trim();
@@ -187,7 +266,23 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
         id: widget.existing!.id,
         kind: _kind,
         amountMinor: minor,
-        categoryId: _categoryId,
+        // Switching an expense INTO a transfer has to clear the category, and
+        // switching back has to clear the destination. Leaving either behind
+        // would keep a field the row's kind forbids, which the peers' sanitizer
+        // then rewrites underneath us.
+        categoryId: _isTransfer ? '' : _categoryId,
+        accountId: fromId,
+        toAccountId: _isTransfer ? toId : '',
+        note: note,
+        occurredAt: _date,
+      );
+    } else if (_isTransfer) {
+      // One row with two account ids — never a matched expense/income pair,
+      // which could half-arrive or be half-deleted under last-write-wins.
+      await repo.insertTransfer(
+        amountMinor: minor,
+        fromAccountId: fromId,
+        toAccountId: toId!,
         note: note,
         occurredAt: _date,
       );
@@ -196,6 +291,7 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
         kind: _kind,
         amountMinor: minor,
         categoryId: _categoryId!,
+        accountId: fromId,
         note: note,
         occurredAt: _date,
       );
@@ -225,14 +321,12 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
         )),
         action: SnackBarAction(
           label: l10n.commonUndo,
-          onPressed: () => repo.insert(
-            kind: tx.kind,
-            amountMinor: tx.amountMinor,
-            categoryId: tx.categoryId,
-            note: tx.note,
-            occurredAt: occurredAtToLocal(tx.occurredAt),
-            source: tx.source,
-          ),
+          // Lifts the tombstone off the SAME row. Re-inserting minted a new id
+          // and rebuilt the row from the fields this call remembered to pass,
+          // which silently dropped account_id, to_account_id and sort_order —
+          // an undone transfer came back with no destination, i.e. a row the
+          // peers throw away.
+          onPressed: () => repo.restore(tx.id),
         ),
       ),
     );
@@ -246,7 +340,18 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
     final currency = ref.watch(currencyProvider).value ?? defaultCurrency;
     final decimals = decimalDigitsFor(currency);
     final minor = parseAmountToMinor(_raw, currencyCode: currency);
-    final canSave = minor != null && _categoryId != null && !_saving;
+    final List<Account> accounts =
+        ref.watch(activeAccountsProvider).value ?? const <Account>[];
+    final String settingsDefault =
+        ref.watch(defaultAccountIdProvider).value ?? defaultAccountId;
+    final String? fromId = _resolveFrom(accounts, settingsDefault);
+    final bool transferReady = _toAccountId != null &&
+        fromId != null &&
+        _toAccountId != fromId;
+    final canSave = minor != null &&
+        fromId != null &&
+        !_saving &&
+        (_isTransfer ? transferReady : _categoryId != null);
     final topGap = MediaQuery.paddingOf(context).top + 14;
 
     return Column(
@@ -331,18 +436,50 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                       ),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
-                        child:
-                            KindPill(value: _kind, onChanged: _setKind),
+                        child: KindPill(
+                          value: _kind,
+                          onChanged: _setKind,
+                          options: kTransactionKindOptions,
+                        ),
                       ),
                       const SizedBox(height: 14),
-                      _CategoryGrid(
-                        kind: _kind,
-                        selectedId: _categoryId,
-                        onSelect: (id) {
-                          HapticFeedback.selectionClick();
-                          setState(() => _categoryId = id);
-                        },
-                      ),
+                      // A transfer has no category by contract, so the grid is
+                      // replaced rather than disabled: the two pickers ARE the
+                      // choice being made.
+                      if (_isTransfer)
+                        _TransferPickers(
+                          accounts: accounts,
+                          fromId: fromId,
+                          toId: _toAccountId,
+                          onFrom: (id) {
+                            HapticFeedback.selectionClick();
+                            setState(() => _accountId = id);
+                          },
+                          onTo: (id) {
+                            HapticFeedback.selectionClick();
+                            setState(() => _toAccountId = id);
+                          },
+                        )
+                      else ...[
+                        _CategoryGrid(
+                          kind: _kind,
+                          selectedId: _categoryId,
+                          onSelect: (id) {
+                            HapticFeedback.selectionClick();
+                            setState(() => _categoryId = id);
+                          },
+                        ),
+                        const SizedBox(height: 10),
+                        AccountStrip(
+                          label: l10n.entryAccountLabel,
+                          accounts: accounts,
+                          selectedId: fromId,
+                          onSelect: (id) {
+                            HapticFeedback.selectionClick();
+                            setState(() => _accountId = id);
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -353,7 +490,9 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                               textInputAction: TextInputAction.done,
                               style: theme.bodyLarge,
                               decoration: InputDecoration(
-                                hintText: l10n.entryNoteHint,
+                                hintText: _isTransfer
+                                    ? l10n.entryTransferNoteHint
+                                    : l10n.entryNoteHint,
                                 isDense: true,
                                 fillColor: t.surfaceRaised,
                                 prefixIcon: Icon(Icons.notes_rounded,
@@ -391,12 +530,15 @@ class _EntrySheetState extends ConsumerState<EntrySheet> {
                           child: AccentButton(
                             label: _editing
                                 ? l10n.commonSaveChanges
-                                : _kind == Kind.income
-                                    ? l10n.entryAddIncome
-                                    : l10n.entryAddExpense,
+                                : switch (_kind) {
+                                    Kind.income => l10n.entryAddIncome,
+                                    Kind.transfer => l10n.entryAddTransfer,
+                                    _ => l10n.entryAddExpense,
+                                  },
                             busy: _saving,
-                            onPressed:
-                                canSave ? () => _save(minor) : null,
+                            onPressed: canSave
+                                ? () => _save(minor, fromId)
+                                : null,
                           ),
                         ),
                       ),
@@ -683,6 +825,10 @@ class _DateChips extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: selected ? t.accent : t.border),
         ),
+        // Padded and flexible: three chips share one row, so on a narrow phone
+        // in Russian or Uzbek the label has to give way rather than overflow.
+        // A date is one of the few labels that may ellipsize — money never is.
+        padding: const EdgeInsets.symmetric(horizontal: 6),
         child: Center(
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -693,17 +839,84 @@ class _DateChips extends StatelessWidget {
                     color: selected ? t.textPrimary : t.textSecondary),
                 const SizedBox(width: 5),
               ],
-              Text(
-                label,
-                style: Theme.of(context).textTheme.labelMedium!.copyWith(
-                      color:
-                          selected ? t.textPrimary : t.textSecondary,
-                    ),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelMedium!.copyWith(
+                        color: selected ? t.textPrimary : t.textSecondary,
+                      ),
+                ),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The two account pickers a transfer is made of, plus the hint that appears
+/// while it is not yet a legal transfer.
+///
+/// Each side excludes the other's choice, so the "same account" case cannot be
+/// selected at all rather than being selectable and then rejected.
+class _TransferPickers extends StatelessWidget {
+  const _TransferPickers({
+    required this.accounts,
+    required this.fromId,
+    required this.toId,
+    required this.onFrom,
+    required this.onTo,
+  });
+
+  final List<Account> accounts;
+  final String? fromId;
+  final String? toId;
+  final ValueChanged<String> onFrom;
+  final ValueChanged<String> onTo;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.tokens;
+    final theme = Theme.of(context).textTheme;
+    final l10n = context.l10n;
+    final bool ready = fromId != null && toId != null && fromId != toId;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        AccountStrip(
+          label: l10n.entryFromAccount,
+          accounts: accounts,
+          selectedId: fromId,
+          onSelect: onFrom,
+          excludeId: toId,
+        ),
+        const SizedBox(height: 10),
+        AccountStrip(
+          label: l10n.entryToAccount,
+          accounts: accounts,
+          selectedId: toId,
+          onSelect: onTo,
+          excludeId: fromId,
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topLeft,
+          child: ready
+              ? const SizedBox(width: double.infinity, height: 0)
+              : Padding(
+                  padding: const EdgeInsets.only(left: 20, top: 8),
+                  child: Text(
+                    l10n.entryTransferPickTwo,
+                    style: theme.bodySmall!.copyWith(color: t.textSecondary),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 }

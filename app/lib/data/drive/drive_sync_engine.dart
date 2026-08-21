@@ -26,6 +26,7 @@ import '../db/database.dart';
 import 'device_auth.dart';
 import 'drive_client.dart';
 import 'snapshot.dart';
+import 'snapshot_merge.dart';
 
 // ---- status ----------------------------------------------------------------
 
@@ -432,7 +433,7 @@ class DriveSyncEngine {
 
       // 6. Publish our own snapshot when anything local is dirty, or when we
       //    have never uploaded it.
-      final _LocalState local = await _readLocalState();
+      final LocalSnapshotState local = await _readLocalState();
       final bool needsPublish = local.hasDirty || selfFile == null;
       if (needsPublish) {
         final TallySnapshot snapshot = TallySnapshot(
@@ -553,76 +554,18 @@ class DriveSyncEngine {
   /// Step 5 — strict last-write-wins: an incoming row is applied iff it does
   /// not exist locally OR `incoming.updated_at_ms > local.updated_at_ms`.
   /// Ties keep the local row. Merged rows land with `dirty = false`.
-  Future<void> _merge(List<TallySnapshot> snapshots) async {
-    await _db.transaction(() async {
-      for (final TallySnapshot s in snapshots) {
-        // Accounts first: a transaction naming a brand-new account should not
-        // be able to land in a pass where the account itself has not arrived.
-        for (final Account incoming in s.accounts) {
-          final Account? existing = await (_db.select(_db.accounts)
-                ..where((a) => a.id.equals(incoming.id)))
-              .getSingleOrNull();
-          if (existing == null || incoming.updatedAtMs > existing.updatedAtMs) {
-            await _db.into(_db.accounts).insertOnConflictUpdate(incoming);
-          }
-        }
-        for (final Category incoming in s.categories) {
-          final Category? existing = await (_db.select(_db.categories)
-                ..where((c) => c.id.equals(incoming.id)))
-              .getSingleOrNull();
-          if (existing == null || incoming.updatedAtMs > existing.updatedAtMs) {
-            await _db.into(_db.categories).insertOnConflictUpdate(incoming);
-          }
-        }
-        for (final Transaction incoming in s.transactions) {
-          final Transaction? existing = await (_db.select(_db.transactions)
-                ..where((t) => t.id.equals(incoming.id)))
-              .getSingleOrNull();
-          if (existing == null || incoming.updatedAtMs > existing.updatedAtMs) {
-            await _db.into(_db.transactions).insertOnConflictUpdate(incoming);
-          }
-        }
-        final SettingsRow? incomingSettings = s.settings;
-        if (incomingSettings != null) {
-          final SettingsRow? existing = await (_db.select(_db.settings)
-                ..where((r) => r.id.equals(incomingSettings.id)))
-              .getSingleOrNull();
-          if (existing == null ||
-              incomingSettings.updatedAtMs > existing.updatedAtMs) {
-            // An empty default_account_id means "unchanged", never "cleared":
-            // a peer predating accounts sends the field absent, and taking
-            // that literally would strip an account the owner deliberately
-            // picked in the app. Fall back to the seed account only when
-            // there is no local value at all.
-            final SettingsRow merged = incomingSettings.defaultAccountId.isEmpty
-                ? incomingSettings.copyWith(
-                    defaultAccountId:
-                        (existing != null && existing.defaultAccountId.isNotEmpty)
-                            ? existing.defaultAccountId
-                            : defaultAccountId,
-                  )
-                : incomingSettings;
-            await _db.into(_db.settings).insertOnConflictUpdate(merged);
-          }
-        }
-      }
-    });
-  }
+  /// Delegates to the ONE merge (`snapshot_merge.dart`), which file import
+  /// shares. `markDirty` stays false here: a row that arrived over Drive is
+  /// already published by the peer that wrote it, so republishing it would be
+  /// pure churn.
+  Future<void> _merge(List<TallySnapshot> snapshots) =>
+      mergeSnapshots(_db, snapshots);
 
-  Future<_LocalState> _readLocalState() async {
-    final List<Account> accounts = await _db.select(_db.accounts).get();
-    final List<Category> categories = await _db.select(_db.categories).get();
-    final List<Transaction> transactions =
-        await _db.select(_db.transactions).get();
-    final SettingsRow? settings = await (_db.select(_db.settings)
-          ..where((r) => r.id.equals(settingsRowId)))
-        .getSingleOrNull();
-    return _LocalState(accounts, categories, transactions, settings);
-  }
+  Future<LocalSnapshotState> _readLocalState() => readLocalSnapshotState(_db);
 
   /// Step 7 — clears `dirty` on exactly the rows that were serialized, and
   /// only while their `updated_at_ms` still matches.
-  Future<void> _clearDirty(_LocalState local) async {
+  Future<void> _clearDirty(LocalSnapshotState local) async {
     await _db.transaction(() async {
       for (final Account a in local.accounts) {
         if (!a.dirty) continue;
@@ -714,20 +657,4 @@ class DriveSyncEngine {
 
   Future<void> _writeMd5Cache(Map<String, String> md5s) =>
       _db.setMeta(MetaKeys.drivePeerMd5, jsonEncode(md5s));
-}
-
-class _LocalState {
-  const _LocalState(
-      this.accounts, this.categories, this.transactions, this.settings);
-
-  final List<Account> accounts;
-  final List<Category> categories;
-  final List<Transaction> transactions;
-  final SettingsRow? settings;
-
-  bool get hasDirty =>
-      accounts.any((Account a) => a.dirty) ||
-      categories.any((Category c) => c.dirty) ||
-      transactions.any((Transaction t) => t.dirty) ||
-      (settings?.dirty ?? false);
 }

@@ -9,28 +9,8 @@ import '../../core/theme.dart';
 import '../../l10n/l10n.dart';
 import '../common/buttons.dart';
 import '../common/cards.dart';
+import '../common/palette.dart';
 import 'package:tally/data/providers.dart';
-
-/// The 11 distinct colors used by the ARCHITECTURE.md seed categories.
-const List<String> kSeedPalette = [
-  '#4CAF7D',
-  '#E8935A',
-  '#5A9BE8',
-  '#9B7DE8',
-  '#E8C95A',
-  '#E85A7A',
-  '#D45AE8',
-  '#5AE8D4',
-  '#7A8BE8',
-  '#5AC8E8',
-  '#8E8E93',
-];
-
-const List<String> _emojiSuggestions = [
-  '🛒', '☕', '🚕', '🏠', '💡', '💊', '🛍️', '🎮', '📱', '✈️', '📦',
-  '💼', '💻', '🎁', '➕', '🍔', '🍕', '🍺', '🎬', '🎵', '📚', '🐾',
-  '👶', '💪', '🚗', '⛽', '🎨', '⚽', '🧾', '💳', '🎓', '🌐',
-];
 
 Future<void> showCategoryEditSheet(
   BuildContext context, {
@@ -198,7 +178,7 @@ class _CategoryEditSheetState extends ConsumerState<CategoryEditSheet> {
             children: [
               for (final e in {
                 _emoji,
-                ..._emojiSuggestions,
+                ...kCategoryEmojiSuggestions,
               })
                 GestureDetector(
                   onTap: () {

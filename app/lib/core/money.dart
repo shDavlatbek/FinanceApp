@@ -157,12 +157,13 @@ String formatWholeGrouped(int whole, {String? locale}) =>
 String decimalSeparatorFor({String? locale}) =>
     NumberFormat.decimalPattern(locale).symbols.DECIMAL_SEP;
 
-/// Parses free-form user input (`"250"`, `"250.50"`, `"250,50"`, `"1 234,5"`)
-/// into minor units for [currencyCode].
+/// Parses an unsigned magnitude (`"250"`, `"250.50"`, `"250,50"`, `"1 234,5"`)
+/// into minor units for [currencyCode]. Zero is allowed here; the public
+/// wrappers decide whether it is acceptable.
 ///
-/// Returns `null` when the input is not a valid positive amount:
-/// non-numeric, zero, negative, or more decimals than the currency allows.
-int? parseAmountToMinor(String input, {String currencyCode = defaultCurrency}) {
+/// Returns `null` for anything non-numeric or carrying more decimals than the
+/// currency has.
+int? _parseMagnitudeToMinor(String input, String currencyCode) {
   final digits = decimalDigitsFor(currencyCode);
   var s = input.trim().replaceAll(' ', '').replaceAll(' ', '');
   if (s.isEmpty) return null;
@@ -175,7 +176,55 @@ int? parseAmountToMinor(String input, {String currencyCode = defaultCurrency}) {
   final whole = int.tryParse(wholeStr);
   if (whole == null) return null;
   final frac = fracStr.isEmpty ? 0 : int.parse(fracStr.padRight(digits, '0'));
-  final minor = whole * _pow10(digits) + frac;
-  if (minor <= 0) return null;
+  return whole * _pow10(digits) + frac;
+}
+
+/// Parses free-form user input (`"250"`, `"250.50"`, `"250,50"`, `"1 234,5"`)
+/// into minor units for [currencyCode].
+///
+/// Returns `null` when the input is not a valid positive amount:
+/// non-numeric, zero, negative, or more decimals than the currency allows.
+int? parseAmountToMinor(String input, {String currencyCode = defaultCurrency}) {
+  final int? minor = _parseMagnitudeToMinor(input, currencyCode);
+  if (minor == null || minor <= 0) return null;
   return minor;
+}
+
+/// Parses an account **opening balance**: the one money field in the app that
+/// may legitimately be negative (a card carrying debt) or zero (the default).
+///
+/// An empty field parses to `0` rather than to null — leaving it blank means
+/// "nothing was there", which is a real answer, not a mistake. A leading `-`
+/// or `−` (the minus the app prints) flips the sign.
+int? parseSignedAmountToMinor(
+  String input, {
+  String currencyCode = defaultCurrency,
+}) {
+  var s = input.trim();
+  if (s.isEmpty) return 0;
+  var negative = false;
+  if (s.startsWith('-') || s.startsWith('−')) {
+    negative = true;
+    s = s.substring(1).trim();
+    if (s.isEmpty) return null;
+  }
+  final int? magnitude = _parseMagnitudeToMinor(s, currencyCode);
+  if (magnitude == null) return null;
+  return negative ? -magnitude : magnitude;
+}
+
+/// Renders minor units as an editable, canonical (dot-separated, ungrouped)
+/// string — the inverse of [parseSignedAmountToMinor], for prefilling a text
+/// field. A negative value keeps an ASCII `-` so it round-trips.
+String minorToEditable(int amountMinor, String currencyCode) {
+  final int digits = decimalDigitsFor(currencyCode);
+  final String sign = amountMinor < 0 ? '-' : '';
+  final int magnitude = amountMinor.abs();
+  if (digits == 0) return '$sign$magnitude';
+  final int per = _pow10(digits);
+  final int whole = magnitude ~/ per;
+  final int frac = magnitude % per;
+  return frac == 0
+      ? '$sign$whole'
+      : '$sign$whole.${frac.toString().padLeft(digits, '0')}';
 }

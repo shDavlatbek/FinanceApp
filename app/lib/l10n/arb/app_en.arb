@@ -915,5 +915,265 @@
         "type": "int"
       }
     }
+  },
+  "accountsTitle": "Accounts",
+  "@accountsTitle": {
+    "description": "Title of the Accounts screen"
+  },
+  "accountsTotalLabel": "TOTAL BALANCE",
+  "@accountsTotalLabel": {
+    "description": "Caption above the summed balance of every live account"
+  },
+  "accountsEmptyTitle": "No accounts",
+  "@accountsEmptyTitle": {
+    "description": "Empty-state title on the Accounts screen"
+  },
+  "accountsEmptyMessage": "Add a wallet, a card or a savings pot to see where your money sits.",
+  "@accountsEmptyMessage": {
+    "description": "Empty-state body on the Accounts screen"
+  },
+  "accountNew": "New account",
+  "@accountNew": {
+    "description": "Button that opens the sheet for creating an account"
+  },
+  "accountEdit": "Edit account",
+  "@accountEdit": {
+    "description": "Title of the account sheet when editing"
+  },
+  "accountCreate": "Create account",
+  "@accountCreate": {
+    "description": "Confirm button in the account sheet when creating"
+  },
+  "accountNameHint": "Account name",
+  "@accountNameHint": {
+    "description": "Placeholder in the account name field"
+  },
+  "accountEmojiLabel": "Icon",
+  "@accountEmojiLabel": {
+    "description": "Label above the emoji picker in the account sheet"
+  },
+  "accountColorLabel": "Colour",
+  "@accountColorLabel": {
+    "description": "Label above the color picker in the account sheet"
+  },
+  "accountKindLabel": "Type",
+  "@accountKindLabel": {
+    "description": "Label above the account type picker"
+  },
+  "accountKindCash": "Cash",
+  "@accountKindCash": {
+    "description": "Account type: physical cash"
+  },
+  "accountKindBank": "Card",
+  "@accountKindBank": {
+    "description": "Account type: a bank card or bank account"
+  },
+  "accountKindSavings": "Savings",
+  "@accountKindSavings": {
+    "description": "Account type: money put aside"
+  },
+  "accountKindInvestment": "Investments",
+  "@accountKindInvestment": {
+    "description": "Account type: invested money"
+  },
+  "accountOpeningBalanceLabel": "Opening balance",
+  "@accountOpeningBalanceLabel": {
+    "description": "Label above the opening balance field"
+  },
+  "accountOpeningBalanceHelp": "What the account already held before you started tracking. A card in debt takes a minus.",
+  "@accountOpeningBalanceHelp": {
+    "description": "Explains what an opening balance is, and that it may be negative"
+  },
+  "accountArchive": "Archive account",
+  "@accountArchive": {
+    "description": "Destructive action in the account sheet"
+  },
+  "accountArchiveConfirmTitle": "Archive this account?",
+  "@accountArchiveConfirmTitle": {
+    "description": "Title of the archive-account confirmation dialog"
+  },
+  "accountArchiveConfirmMessage": "{name} disappears from the pickers. Every entry booked to it stays in your history.",
+  "@accountArchiveConfirmMessage": {
+    "description": "Body of the archive-account confirmation dialog. Reassures that history survives.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Savings"
+      }
+    }
+  },
+  "accountArchivedSnack": "Archived {name}",
+  "@accountArchivedSnack": {
+    "description": "Snackbar confirming an account went to the archive",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Savings"
+      }
+    }
+  },
+  "accountsDefaultLabel": "Telegram bot books to",
+  "@accountsDefaultLabel": {
+    "description": "Label of the row picking which account the Telegram bot books to"
+  },
+  "accountsDefaultHelp": "Everything you type to the bot lands here, so it never has to ask.",
+  "@accountsDefaultHelp": {
+    "description": "Explains why the bot needs a default account chosen in the app"
+  },
+  "accountDefaultBadge": "Bot",
+  "@accountDefaultBadge": {
+    "description": "Badge on the account the bot books to"
+  },
+  "accountSendTo": "Send to {name}",
+  "@accountSendTo": {
+    "description": "Quick action that starts a transfer INTO the named account",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Savings"
+      }
+    }
+  },
+  "accountsMoveMoney": "Move money",
+  "@accountsMoveMoney": {
+    "description": "Button on the Accounts screen that opens a transfer"
+  },
+  "settingsAccountsValue": "Balances & default",
+  "@settingsAccountsValue": {
+    "description": "Trailing hint on the Accounts row in Settings"
+  },
+  "commonTransfer": "Transfer",
+  "@commonTransfer": {
+    "description": "Third transaction kind: money moved between your own accounts"
+  },
+  "entryAddTransfer": "Move money",
+  "@entryAddTransfer": {
+    "description": "Confirm button in the entry sheet when the kind is transfer"
+  },
+  "entryFromAccount": "From",
+  "@entryFromAccount": {
+    "description": "Label above the source-account picker in a transfer"
+  },
+  "entryToAccount": "To",
+  "@entryToAccount": {
+    "description": "Label above the destination-account picker in a transfer"
+  },
+  "entryAccountLabel": "Account",
+  "@entryAccountLabel": {
+    "description": "Label above the account picker for an income or expense"
+  },
+  "entryTransferPickTwo": "Pick two different accounts",
+  "@entryTransferPickTwo": {
+    "description": "Hint shown while a transfer still names the same account on both ends"
+  },
+  "entryTransferNoteHint": "What is this for?",
+  "@entryTransferNoteHint": {
+    "description": "Placeholder in the note field of a transfer"
+  },
+  "settingsBackupSection": "Backup",
+  "@settingsBackupSection": {
+    "description": "Settings section header for file export and import"
+  },
+  "backupExportJsonTitle": "Export a backup",
+  "@backupExportJsonTitle": {
+    "description": "Row that exports a full JSON backup"
+  },
+  "backupExportJsonSubtitle": "JSON · restorable",
+  "@backupExportJsonSubtitle": {
+    "description": "Trailing hint on the JSON export row"
+  },
+  "backupExportCsvTitle": "Export a spreadsheet",
+  "@backupExportCsvTitle": {
+    "description": "Row that exports transactions as a spreadsheet"
+  },
+  "backupExportCsvSubtitle": "CSV · read-only",
+  "@backupExportCsvSubtitle": {
+    "description": "Trailing hint on the CSV export row"
+  },
+  "backupImportTitle": "Import a backup",
+  "@backupImportTitle": {
+    "description": "Row that imports a JSON backup"
+  },
+  "backupImportSubtitle": "Merges · newest wins",
+  "@backupImportSubtitle": {
+    "description": "Trailing hint on the import row"
+  },
+  "backupCsvNotice": "A spreadsheet cannot carry deletions or settings, so it is an export only — restore from a JSON backup.",
+  "@backupCsvNotice": {
+    "description": "Notice explaining that CSV is not a restore path"
+  },
+  "backupImportConfirmTitle": "Import this backup?",
+  "@backupImportConfirmTitle": {
+    "description": "Title of the import confirmation dialog"
+  },
+  "backupImportConfirmMessage": "Rows are merged, and the newer version of each one wins. Nothing you have added since the backup is lost, and importing the same file twice changes nothing.",
+  "@backupImportConfirmMessage": {
+    "description": "Body of the import confirmation dialog. States the merge rule plainly."
+  },
+  "backupImportConfirmAction": "Import",
+  "@backupImportConfirmAction": {
+    "description": "Confirm button of the import dialog"
+  },
+  "backupSavedSnack": "Saved {file}",
+  "@backupSavedSnack": {
+    "description": "Snackbar after a file was written",
+    "placeholders": {
+      "file": {
+        "type": "String",
+        "example": "tally-backup-20260821-142530.json"
+      }
+    }
+  },
+  "backupCancelledSnack": "Nothing saved",
+  "@backupCancelledSnack": {
+    "description": "Snackbar when the owner backed out of the file dialog"
+  },
+  "backupFailedSnack": "Export failed: {message}",
+  "@backupFailedSnack": {
+    "description": "Snackbar when writing the file failed",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "no space left"
+      }
+    }
+  },
+  "backupImportFailedSnack": "Cannot read that file: {message}",
+  "@backupImportFailedSnack": {
+    "description": "Snackbar when the chosen file is not a readable snapshot",
+    "placeholders": {
+      "message": {
+        "type": "String",
+        "example": "missing \"schema\""
+      }
+    }
+  },
+  "backupImportNothingSnack": "Nothing to merge — your data is already up to date",
+  "@backupImportNothingSnack": {
+    "description": "Snackbar when a merge applied nothing — an idempotent second import"
+  },
+  "backupImportedSnack": "{count, plural, one{{count} row merged} other{{count} rows merged}}",
+  "@backupImportedSnack": {
+    "description": "Snackbar summarising a successful import. Russian needs one/few/many/other.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "42"
+      }
+    }
+  },
+  "backupImportSkippedSnack": "{count, plural, one{{count} bad row skipped} other{{count} bad rows skipped}}",
+  "@backupImportSkippedSnack": {
+    "description": "Appended to the import summary when the sanitizer dropped rows. Russian needs one/few/many/other.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "2"
+      }
+    }
+  },
+  "accountOpeningBalanceInvalid": "Not a number",
+  "@accountOpeningBalanceInvalid": {
+    "description": "Error under the opening-balance field when the typed value is not a number"
   }
 }

@@ -7,7 +7,7 @@
 ///
 /// ```json
 /// {
-///   "schema": 2,
+///   "schema": 3,
 ///   "device_id": "b2c3…",
 ///   "device_name": "Pixel 7",
 ///   "written_at_ms": 1787160000000,
@@ -18,11 +18,14 @@
 /// }
 /// ```
 ///
-/// Schema 2 added `accounts`. This build WRITES 2 and READS 1 and 2: a peer
-/// that has not been updated yet keeps publishing 1, and refusing to read it
-/// would strand that device. A schema-1 file carries no accounts and no
-/// `account_id`, so its rows are booked to the seed cash account — exactly
-/// where the local v3 migration puts this peer's own pre-accounts rows.
+/// Schema 2 added `accounts`; schema 3 added `sort_order`. This build WRITES
+/// [snapshotSchemaVersion] and reads everything from
+/// [minReadableSnapshotSchema] up: a peer that has not been updated yet keeps
+/// publishing an older schema, and refusing to read it would strand that
+/// device. A schema-1 file carries no accounts and no `account_id`, so its rows
+/// are booked to the seed cash account — exactly where the local v3 migration
+/// puts this peer's own pre-accounts rows — and a schema-2 file carries no
+/// `sort_order`, so its rows read as "never placed by hand".
 ///
 /// The local-only `dirty` flag is never serialized; decoded rows always carry
 /// `dirty = false`.

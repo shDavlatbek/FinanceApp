@@ -8,6 +8,7 @@ library;
 
 import 'package:flutter/widgets.dart';
 
+import '../core/constants.dart';
 import '../core/seed_names.dart';
 import 'gen/app_localizations.dart';
 
@@ -109,6 +110,20 @@ String localizedAccountName(
       name: name,
       localize: (String key) => seedAccountLabel(l10n, key),
     );
+
+/// Translated label for an account `kind` (`cash` / `bank` / `savings` /
+/// `investment`).
+///
+/// The kind is presentation only — every account holds money the same way —
+/// so this is a label, never a behaviour switch. Falls back to the raw value
+/// for a kind a hand-edited peer file invented.
+String accountKindName(AppLocalizations l10n, String kind) => switch (kind) {
+      AccountKind.cash => l10n.accountKindCash,
+      AccountKind.bank => l10n.accountKindBank,
+      AccountKind.savings => l10n.accountKindSavings,
+      AccountKind.investment => l10n.accountKindInvestment,
+      _ => kind,
+    };
 
 /// Human name of an ISO-4217 code for the currency picker; falls back to the
 /// code itself for currencies the catalog does not name.

@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:tally/data/providers.dart';
+import 'package:tally/data/repo/accounts_repository.dart';
 import 'package:tally/data/repo/settings_repository.dart';
 import 'package:tally/data/repo/transactions_repository.dart';
 import 'package:tally/main.dart';
@@ -29,6 +30,10 @@ const _utilities = 'c1a7e2f0-0005-4a00-9000-000000000005';
 const _fun = 'c1a7e2f0-0008-4a00-9000-000000000008';
 const _subs = 'c1a7e2f0-0009-4a00-9000-000000000009';
 const _salary = 'c1a7e2f0-0101-4a00-9000-000000000101';
+
+const _card = 'a1c7e2f0-0002-4a00-9000-000000000002';
+const _savings = 'a1c7e2f0-0003-4a00-9000-000000000003';
+const _investments = 'a1c7e2f0-0004-4a00-9000-000000000004';
 
 Future<void> _loadFonts() async {
   final loader = FontLoader('Manrope');
@@ -96,6 +101,26 @@ Future<void> _seed(AppDatabase db, {int scale = 1}) async {
   await tx('expense', 31200, _groceries, 'big restock', d(9));
   await tx('expense', 4500, _cafe, 'lunch with Kate', d(11));
   await tx('expense', 7250, _transport, 'airport taxi', d(13));
+
+  // Money put aside, so the captures show a transfer rendered as one: neutral
+  // ink, no sign, the two accounts as the subtitle.
+  await repo.insertTransfer(
+    amountMinor: 500000 * scale,
+    fromAccountId: _card,
+    toAccountId: _savings,
+    note: 'rainy day',
+    occurredAt: d(3, 11, 20),
+  );
+  await repo.insertTransfer(
+    amountMinor: 250000 * scale,
+    fromAccountId: _card,
+    toAccountId: _investments,
+    occurredAt: d(8, 14, 5),
+  );
+  // A card carrying debt, so the Accounts screen shows a negative balance in
+  // neutral ink rather than red.
+  await AccountsRepository(db, onMutation: () {})
+      .update(id: _card, openingBalanceMinor: -75000 * scale);
 
   // Earlier months, for the six-month trend.
   for (var m = 1; m <= 5; m++) {
@@ -354,6 +379,78 @@ void main() {
     await expectLater(
       find.byType(TallyApp),
       matchesGoldenFile('shots/07_home_light.png'),
+    );
+
+    await _teardownTree(tester);
+  });
+
+  testWidgets('capture accounts and transfers', skip: !_capture,
+      (tester) async {
+    tester.view.physicalSize = const Size(1170, 2400);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final db = openTestDb();
+    addTearDown(db.close);
+    await _seed(db);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [databaseProvider.overrideWithValue(db)],
+        child: const TallyApp(),
+      ),
+    );
+    await _settle(tester);
+
+    // Settings holds the entry points for both new surfaces. The Backup
+    // section is shot first, while nothing is covering the screen: a modal
+    // sheet is far easier to open than to dismiss from a test.
+    await tester.tap(find.text('Settings').last);
+    await _settle(tester);
+    await tester.scrollUntilVisible(find.text('Import a backup'), 250);
+    await _settle(tester);
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/20_backup.png'),
+    );
+
+    // Plain finder, no `.last`: scrollUntilVisible probes the finder on every
+    // drag step, and `.last` throws rather than reporting "not found yet"
+    // while the target is still off screen.
+    await tester.scrollUntilVisible(find.text('Accounts'), -250);
+    await _settle(tester);
+    await tester.tap(find.text('Accounts'));
+    await _settle(tester);
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/21_accounts.png'),
+    );
+
+    // One-tap "send to savings": the entry sheet in transfer mode.
+    await tester.tap(find.text('Send to Savings'));
+    await _settle(tester);
+    for (final key in const ['5', '0', '0']) {
+      final k = find.text(key);
+      if (k.evaluate().isNotEmpty) {
+        await tester.tap(k.first);
+        await tester.pump(const Duration(milliseconds: 60));
+      }
+    }
+    await _settle(tester);
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/22_transfer_sheet.png'),
+    );
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await _settle(tester);
+
+    // The account editor last, so nothing has to dismiss it.
+    await tester.tap(find.text('Card').first);
+    await _settle(tester);
+    await expectLater(
+      find.byType(TallyApp),
+      matchesGoldenFile('shots/23_account_edit.png'),
     );
 
     await _teardownTree(tester);

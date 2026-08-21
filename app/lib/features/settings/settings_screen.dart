@@ -1,6 +1,6 @@
 /// Settings — Google Drive connection (OAuth device flow), live sync status +
-/// last-synced, manual sync, currency picker, appearance, categories link,
-/// standalone-mode notice, about.
+/// last-synced, manual sync, currency picker, appearance, categories and
+/// accounts links, file export/import, standalone-mode notice, about.
 library;
 
 import 'package:flutter/material.dart';
@@ -66,6 +66,10 @@ class SettingsScreen extends ConsumerStatefulWidget {
 /// Where the Google Drive device-authorization flow currently is.
 enum _AuthPhase { idle, requesting, waiting, failed }
 
+/// Which file operation is in flight, so exactly one row shows a spinner and
+/// a second tap cannot start a concurrent one.
+enum _BackupAction { exportJson, exportCsv, import }
+
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   _AuthPhase _phase = _AuthPhase.idle;
   DeviceAuthPrompt? _prompt;
@@ -73,6 +77,137 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   int _pollAttempt = 0;
   bool _manualSyncing = false;
   bool _disconnecting = false;
+  _BackupAction? _backupBusy;
+
+  // ---- export / import ----------------------------------------------------
+
+  /// Writes a file through the transport and reports what happened.
+  ///
+  /// Cancelling the platform dialog is a normal outcome and says so; anything
+  /// thrown is surfaced with its message rather than swallowed, because a
+  /// backup the owner believes exists and does not is the worst failure this
+  /// screen can have.
+  Future<void> _write(
+    _BackupAction action,
+    Future<BackupFile> Function() build,
+  ) async {
+    if (_backupBusy != null) return;
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final transport = ref.read(backupTransportProvider);
+    setState(() => _backupBusy = action);
+    try {
+      final BackupFile file = await build();
+      final bool saved = await transport.save(file);
+      messenger.showSnackBar(SnackBar(
+        content: Text(saved
+            ? l10n.backupSavedSnack(file: file.fileName)
+            : l10n.backupCancelledSnack),
+      ));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(l10n.backupFailedSnack(message: e.toString())),
+      ));
+    } finally {
+      if (mounted) setState(() => _backupBusy = null);
+    }
+  }
+
+  Future<void> _exportSnapshot() => _write(
+        _BackupAction.exportJson,
+        () => ref.read(backupServiceProvider).buildSnapshotBackup(),
+      );
+
+  Future<void> _exportCsv() {
+    // Only the NAMING is resolved here, where there is a BuildContext and a
+    // locale; the service loads the rows itself. Passing a lookup map read off
+    // `categoriesByIdProvider` was the first attempt and it exported empty
+    // name columns: that provider is derived from a stream this screen does
+    // not subscribe to, so reading it cold yields an empty map.
+    final l10n = context.l10n;
+    final String currency = ref.read(currencyProvider).value ?? defaultCurrency;
+    return _write(
+      _BackupAction.exportCsv,
+      () => ref.read(backupServiceProvider).buildCsvExport(
+            currency: currency,
+            localizeCategory: (String id, String name) =>
+                localizedCategoryName(l10n, id: id, name: name),
+            localizeAccount: (String id, String name) =>
+                localizedAccountName(l10n, id: id, name: name),
+          ),
+    );
+  }
+
+  Future<void> _importSnapshot() async {
+    if (_backupBusy != null) return;
+    final l10n = context.l10n;
+    final t = context.tokens;
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(l10n.backupImportConfirmTitle),
+        content: Text(l10n.backupImportConfirmMessage),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: TextButton.styleFrom(foregroundColor: t.accent),
+            child: Text(l10n.backupImportConfirmAction),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final transport = ref.read(backupTransportProvider);
+    final service = ref.read(backupServiceProvider);
+    setState(() => _backupBusy = _BackupAction.import);
+    try {
+      final PickedBackupFile? picked = await transport.pick();
+      if (picked == null) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.backupCancelledSnack)),
+        );
+        return;
+      }
+      final SnapshotMergeResult result =
+          await service.importSnapshot(picked.bytes);
+      messenger.showSnackBar(
+        SnackBar(content: Text(_importSummary(l10n, result))),
+      );
+    } on BackupImportException catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(l10n.backupImportFailedSnack(message: e.message)),
+      ));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(l10n.backupImportFailedSnack(message: e.toString())),
+      ));
+    } finally {
+      if (mounted) setState(() => _backupBusy = null);
+    }
+  }
+
+  /// What the import actually did. "Nothing" is a real, correct answer — it is
+  /// what importing the same file twice reports — so it gets its own sentence
+  /// rather than a bare "0 rows".
+  String _importSummary(AppLocalizations l10n, SnapshotMergeResult result) {
+    final StringBuffer out = StringBuffer();
+    if (result.isEmpty) {
+      out.write(l10n.backupImportNothingSnack);
+    } else {
+      out.write(l10n.backupImportedSnack(count: result.rows));
+    }
+    if (result.skipped.isNotEmpty) {
+      out.write(' · ');
+      out.write(l10n.backupImportSkippedSnack(count: result.skipped.length));
+    }
+    return out.toString();
+  }
 
   // ---- Google Drive device flow ------------------------------------------
 
@@ -394,6 +529,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
                 Divider(color: t.border, indent: 54),
                 _SettingsRowTile(
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: l10n.accountsTitle,
+                  value: l10n.settingsAccountsValue,
+                  onTap: () => context.push('/accounts'),
+                ),
+                Divider(color: t.border, indent: 54),
+                _SettingsRowTile(
                   icon: Icons.category_outlined,
                   title: l10n.categoriesTitle,
                   value: l10n.settingsCategoriesValue,
@@ -463,6 +605,42 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 24),
+
+          // ---- backup --------------------------------------------------
+          SectionHeader(l10n.settingsBackupSection),
+          TallyCard(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Column(
+              children: [
+                _SettingsRowTile(
+                  icon: Icons.download_outlined,
+                  title: l10n.backupExportJsonTitle,
+                  value: l10n.backupExportJsonSubtitle,
+                  busy: _backupBusy == _BackupAction.exportJson,
+                  onTap: _exportSnapshot,
+                ),
+                Divider(color: t.border, indent: 54),
+                _SettingsRowTile(
+                  icon: Icons.table_chart_outlined,
+                  title: l10n.backupExportCsvTitle,
+                  value: l10n.backupExportCsvSubtitle,
+                  busy: _backupBusy == _BackupAction.exportCsv,
+                  onTap: _exportCsv,
+                ),
+                Divider(color: t.border, indent: 54),
+                _SettingsRowTile(
+                  icon: Icons.upload_outlined,
+                  title: l10n.backupImportTitle,
+                  value: l10n.backupImportSubtitle,
+                  busy: _backupBusy == _BackupAction.import,
+                  onTap: _importSnapshot,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          _NoticeBox(emoji: '📄', text: l10n.backupCsvNotice),
           const SizedBox(height: 24),
 
           // ---- about ---------------------------------------------------
@@ -954,12 +1132,17 @@ class _SettingsRowTile extends StatelessWidget {
     required this.title,
     required this.value,
     required this.onTap,
+    this.busy = false,
   });
 
   final IconData icon;
   final String title;
   final String value;
   final VoidCallback onTap;
+
+  /// Swaps the chevron for a spinner and blocks the tap while a file dialog
+  /// or a merge is in flight.
+  final bool busy;
 
   @override
   Widget build(BuildContext context) {
@@ -968,7 +1151,7 @@ class _SettingsRowTile extends StatelessWidget {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
+        onTap: busy ? null : onTap,
         borderRadius: BorderRadius.circular(14),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
@@ -981,10 +1164,24 @@ class _SettingsRowTile extends StatelessWidget {
                     style: theme.bodyLarge!
                         .copyWith(fontWeight: FontWeight.w600)),
               ),
-              Text(value, style: theme.bodySmall),
+              Flexible(
+                child: Text(value,
+                    style: theme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.right),
+              ),
               const SizedBox(width: 6),
-              Icon(Icons.chevron_right_rounded,
-                  size: 18, color: t.textSecondary),
+              if (busy)
+                SizedBox(
+                  width: 14,
+                  height: 14,
+                  child:
+                      CircularProgressIndicator(strokeWidth: 2, color: t.accent),
+                )
+              else
+                Icon(Icons.chevron_right_rounded,
+                    size: 18, color: t.textSecondary),
             ],
           ),
         ),

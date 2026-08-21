@@ -8,7 +8,7 @@ A friction-free, self-hosted personal money tracker. Log an expense by messaging
 
 - 🤖 **Telegram bot entry** — `250 groceries lunch` logs an expense; `+50000 salary` logs income; unknown words get a one-tap category picker and are remembered forever after
 - 📊 `/today`, `/week`, `/month` summaries, `/accounts` balances and `/undo` right in Telegram
-- 📱 **Flutter app** (Android + iOS) — month overview, fast numpad entry, history with search, category donut & trend charts, category management
+- 📱 **Flutter app** (Android + iOS) — month overview, fast numpad entry, history with search, category donut & trend charts, category and account management, and a Day / Month / Range lens on every figure
 - 🏦 **Accounts** — cash, cards, savings, investments, each with its own balance. "Send to savings" is a transfer between two of your accounts, and transfers never count as income or spending, so putting money aside doesn't look like losing it
 - 💾 **Export & import** — write a JSON backup or a CSV for your spreadsheet, and restore a backup later. Import merges newest-wins, so running it twice changes nothing and it can never clobber newer entries
 - ☁️ **Google Drive sync** — the app and the bot are peers that exchange snapshots in a `Tally` folder in your own Drive. No exposed ports, no public hostname, no TLS certificates. Your data sits in your Drive as readable JSON, which doubles as your backup.

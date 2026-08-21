@@ -321,4 +321,97 @@ void main() {
           reason: 'a self-transfer created money out of nothing');
     });
   });
+
+  group('ordering and archiving', () {
+    test('reorder renumbers by position and marks every row dirty', () async {
+      final List<Account> before = await accounts.watchActive().first;
+      final List<String> reversed = <String>[
+        for (final Account a in before.reversed) a.id,
+      ];
+
+      await accounts.reorder(reversed);
+
+      final List<Account> after = await accounts.watchActive().first;
+      expect(<String>[for (final Account a in after) a.id], reversed);
+      for (int i = 0; i < after.length; i++) {
+        expect(after[i].sortOrder, i);
+        // The order has to reach the other peer, so every touched row is
+        // dirty and its updated_at_ms bumped.
+        expect(after[i].dirty, isTrue);
+        expect(after[i].updatedAtMs, greaterThan(seedUpdatedAtMs));
+      }
+    });
+
+    test('a new account lands after the seeds instead of colliding', () async {
+      final Account created = await accounts.insert(
+        name: 'Brokerage',
+        kind: AccountKind.investment,
+        emoji: '📈',
+        color: '#9B7DE8',
+      );
+      expect(created.sortOrder, 4);
+    });
+
+    test('unarchive lifts the tombstone off the same row', () async {
+      // Undo has to restore the account itself, not a copy: a new id would
+      // orphan every transaction booked to the old one.
+      final Transaction booked = await txs.insert(
+        kind: Kind.expense,
+        amountMinor: 100,
+        categoryId: _groceries,
+        accountId: _card,
+      );
+      await accounts.archive(_card);
+      expect((await accounts.getById(_card))!.deletedAtMs, isNotNull);
+
+      await accounts.unarchive(_card);
+
+      final Account restored = (await accounts.getById(_card))!;
+      expect(restored.deletedAtMs, isNull);
+      expect(restored.dirty, isTrue);
+      expect((await txs.getById(booked.id))!.accountId, _card);
+    });
+  });
+
+  group('restoring a transaction', () {
+    test('brings a transfer back with both of its accounts', () async {
+      // Regression: undo used to re-INSERT from remembered fields, which minted
+      // a new id and dropped account_id, to_account_id and sort_order.
+      final Transaction transfer = await txs.insertTransfer(
+        amountMinor: 50000,
+        fromAccountId: _card,
+        toAccountId: _savings,
+        note: 'rainy day',
+      );
+      await txs.softDelete(transfer.id);
+      await txs.restore(transfer.id);
+
+      final Transaction restored = (await txs.getById(transfer.id))!;
+      expect(restored.deletedAtMs, isNull);
+      expect(restored.kind, Kind.transfer);
+      expect(restored.accountId, _card);
+      expect(restored.toAccountId, _savings);
+      expect(restored.note, 'rainy day');
+      expect(restored.dirty, isTrue);
+    });
+
+    test('puts the money back in the balance', () async {
+      final int opening =
+          (await accounts.watchBalances().first)
+              .firstWhere((AccountBalance b) => b.account.id == _savings)
+              .balanceMinor;
+      final Transaction transfer = await txs.insertTransfer(
+        amountMinor: 50000,
+        fromAccountId: _card,
+        toAccountId: _savings,
+      );
+      await txs.softDelete(transfer.id);
+      await txs.restore(transfer.id);
+
+      final int after = (await accounts.watchBalances().first)
+          .firstWhere((AccountBalance b) => b.account.id == _savings)
+          .balanceMinor;
+      expect(after, opening + 50000);
+    });
+  });
 }

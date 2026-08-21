@@ -10,8 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tally/core/theme.dart';
 import 'package:tally/data/providers.dart';
 import 'package:tally/data/repo/transactions_repository.dart';
+import 'package:tally/features/accounts/accounts_screen.dart';
 import 'package:tally/features/categories/categories_screen.dart';
 import 'package:tally/features/common/kind_pill.dart';
+import 'package:tally/features/settings/settings_screen.dart';
 import 'package:tally/l10n/l10n.dart';
 import 'package:tally/l10n/locale_controller.dart';
 import 'package:tally/main.dart';
@@ -49,12 +51,37 @@ void main() {
       'uz': 'Daromad',
     };
 
+    const Map<String, String> transferLabel = <String, String>{
+      'en': 'Transfer',
+      'ru': 'Перевод',
+      'uz': 'Oʻtkazma',
+    };
+
     for (final String code in expenseLabel.keys) {
       testWidgets('KindPill in $code', (tester) async {
         await tester.pumpLocalized(
           KindPill(value: Kind.expense, onChanged: (_) {}),
           locale: Locale(code),
         );
+        expect(find.text(expenseLabel[code]!), findsOneWidget);
+        expect(find.text(incomeLabel[code]!), findsOneWidget);
+        // The two-kind pill is the CATEGORY one: a category is an income or an
+        // expense, never a transfer.
+        expect(find.text(transferLabel[code]!), findsNothing);
+      });
+
+      testWidgets('the three-kind KindPill in $code', (tester) async {
+        await tester.pumpLocalized(
+          KindPill(
+            value: Kind.transfer,
+            onChanged: (_) {},
+            options: kTransactionKindOptions,
+          ),
+          locale: Locale(code),
+        );
+        // Three labels in one pill on a narrow screen is where translations
+        // overflow, and a layout overflow fails this test by itself.
+        expect(find.text(transferLabel[code]!), findsOneWidget);
         expect(find.text(expenseLabel[code]!), findsOneWidget);
         expect(find.text(incomeLabel[code]!), findsOneWidget);
       });
@@ -355,5 +382,92 @@ void main() {
         'Продукты',
       );
     });
+  });
+
+  group('the new surfaces render in each locale', () {
+    const Map<String, (String accountsTitle, String total, String backup)>
+        expected = <String, (String, String, String)>{
+      'en': ('Accounts', 'TOTAL BALANCE', 'Import a backup'),
+      'ru': ('Счета', 'ВСЕГО НА СЧЕТАХ', 'Загрузить копию'),
+      'uz': ('Hisoblar', 'JAMI HISOBLARDA', 'Nusxani yuklash'),
+    };
+
+    for (final MapEntry<String, (String, String, String)> e
+        in expected.entries) {
+      testWidgets('Accounts in ${e.key}', (WidgetTester tester) async {
+        // A phone-sized viewport on purpose: the total hero, the "send to"
+        // chips and the four type pills are exactly where a longer
+        // translation overflows, and an overflow fails this test on its own.
+        tester.view.physicalSize = const Size(1170, 2400);
+        tester.view.devicePixelRatio = 3.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final AppDatabase db = openTestDb();
+        addTearDown(db.close);
+        await TransactionsRepository(db).insertTransfer(
+          amountMinor: 5000000,
+          fromAccountId: 'a1c7e2f0-0001-4a00-9000-000000000001',
+          toAccountId: 'a1c7e2f0-0003-4a00-9000-000000000003',
+        );
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: <Override>[databaseProvider.overrideWithValue(db)],
+            child: MaterialApp(
+              locale: Locale(e.key),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              theme: tallyTheme(Brightness.dark),
+              home: const AccountsScreen(),
+            ),
+          ),
+        );
+        await _settle(tester);
+
+        expect(find.text(e.value.$1), findsWidgets);
+        expect(find.text(e.value.$2), findsOneWidget);
+
+        // Open the account editor, where the four type pills sit two to a
+        // row — the tightest layout in the feature. Found by its icon, which
+        // is the one thing on the button that does not change per language.
+        await tester.tap(find.byIcon(Icons.add_rounded));
+        await _settle(tester);
+        expect(find.byType(TextField), findsWidgets);
+
+        await _teardownTree(tester);
+      });
+
+      testWidgets('the Backup section in ${e.key}',
+          (WidgetTester tester) async {
+        tester.view.physicalSize = const Size(1170, 2400);
+        tester.view.devicePixelRatio = 3.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
+        final AppDatabase db = openTestDb();
+        addTearDown(db.close);
+
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: <Override>[databaseProvider.overrideWithValue(db)],
+            child: MaterialApp(
+              locale: Locale(e.key),
+              localizationsDelegates: AppLocalizations.localizationsDelegates,
+              supportedLocales: AppLocalizations.supportedLocales,
+              theme: tallyTheme(Brightness.dark),
+              home: const Scaffold(body: SettingsScreen()),
+            ),
+          ),
+        );
+        await _settle(tester);
+        await tester.scrollUntilVisible(find.text(e.value.$3), 250);
+        await _settle(tester);
+
+        expect(find.text(e.value.$3), findsOneWidget);
+
+        await _teardownTree(tester);
+      });
+    }
   });
 }

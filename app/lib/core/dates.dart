@@ -86,6 +86,25 @@ String toOccurredAt(DateTime instant) => instant.toUtc().toIso8601String();
 DateTime occurredAtToLocal(String occurredAt) =>
     DateTime.parse(occurredAt).toLocal();
 
+/// The `occurred_at` calendar date in **UTC**, `yyyy-MM-dd` — the CSV export's
+/// `date` column (docs/ARCHITECTURE.md § CSV export).
+///
+/// UTC, not local, because the contract pins the column that way: a spreadsheet
+/// row has to mean the same thing on every machine that opens the file, and the
+/// exporting phone's offset is not part of the data.
+String utcDayKeyFromOccurredAt(String occurredAt) {
+  final DateTime u = DateTime.parse(occurredAt).toUtc();
+  return '${_pad4(u.year)}-${_pad2(u.month)}-${_pad2(u.day)}';
+}
+
+/// `YYYYMMDD-HHMMSS` stamp for an export file name, in **local** time.
+///
+/// Local on purpose: this string exists to be read by the owner in a file
+/// listing, and a backup they made at 9pm should not be filed under yesterday.
+String fileStamp(DateTime instant) =>
+    '${_pad4(instant.year)}${_pad2(instant.month)}${_pad2(instant.day)}'
+    '-${_pad2(instant.hour)}${_pad2(instant.minute)}${_pad2(instant.second)}';
+
 /// Local calendar-day grouping key for an `occurred_at` string.
 String dayKeyFromOccurredAt(String occurredAt) =>
     dayKey(occurredAtToLocal(occurredAt));

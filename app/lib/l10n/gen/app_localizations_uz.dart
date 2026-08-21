@@ -682,4 +682,197 @@ class AppLocalizationsUz extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get accountsTitle => 'Hisoblar';
+
+  @override
+  String get accountsTotalLabel => 'JAMI HISOBLARDA';
+
+  @override
+  String get accountsEmptyTitle => 'Hisob yoʻq';
+
+  @override
+  String get accountsEmptyMessage =>
+      'Hamyon, karta yoki jamgʻarma qoʻshsangiz, pulingiz qayerda turganini koʻrasiz.';
+
+  @override
+  String get accountNew => 'Yangi hisob';
+
+  @override
+  String get accountEdit => 'Hisobni oʻzgartirish';
+
+  @override
+  String get accountCreate => 'Hisob yaratish';
+
+  @override
+  String get accountNameHint => 'Hisob nomi';
+
+  @override
+  String get accountEmojiLabel => 'Belgi';
+
+  @override
+  String get accountColorLabel => 'Rang';
+
+  @override
+  String get accountKindLabel => 'Turi';
+
+  @override
+  String get accountKindCash => 'Naqd pul';
+
+  @override
+  String get accountKindBank => 'Karta';
+
+  @override
+  String get accountKindSavings => 'Jamgʻarma';
+
+  @override
+  String get accountKindInvestment => 'Investitsiyalar';
+
+  @override
+  String get accountOpeningBalanceLabel => 'Boshlangʻich qoldiq';
+
+  @override
+  String get accountOpeningBalanceHelp =>
+      'Hisob yuritishni boshlashdan avval hisobda boʻlgan summa. Kartadagi qarz minus bilan yoziladi.';
+
+  @override
+  String get accountArchive => 'Arxivga';
+
+  @override
+  String get accountArchiveConfirmTitle => 'Hisob arxivga olinsinmi?';
+
+  @override
+  String accountArchiveConfirmMessage({required String name}) {
+    return '$name tanlash roʻyxatlaridan yoʻqoladi. Unga yozilgan barcha kirimlar tarixda qoladi.';
+  }
+
+  @override
+  String accountArchivedSnack({required String name}) {
+    return '$name arxivga olindi';
+  }
+
+  @override
+  String get accountsDefaultLabel => 'Telegram bot yozadi';
+
+  @override
+  String get accountsDefaultHelp =>
+      'Botga yozgan hamma narsa shu hisobga tushadi — u hech narsa soʻramaydi.';
+
+  @override
+  String get accountDefaultBadge => 'Bot';
+
+  @override
+  String accountSendTo({required String name}) {
+    return '${name}ga yuborish';
+  }
+
+  @override
+  String get accountsMoveMoney => 'Pul oʻtkazish';
+
+  @override
+  String get settingsAccountsValue => 'Qoldiqlar va asosiy hisob';
+
+  @override
+  String get commonTransfer => 'Oʻtkazma';
+
+  @override
+  String get entryAddTransfer => 'Pul oʻtkazish';
+
+  @override
+  String get entryFromAccount => 'Qayerdan';
+
+  @override
+  String get entryToAccount => 'Qayerga';
+
+  @override
+  String get entryAccountLabel => 'Hisob';
+
+  @override
+  String get entryTransferPickTwo => 'Ikki xil hisobni tanlang';
+
+  @override
+  String get entryTransferNoteHint => 'Bu nima uchun?';
+
+  @override
+  String get settingsBackupSection => 'Zaxira nusxa';
+
+  @override
+  String get backupExportJsonTitle => 'Nusxani saqlash';
+
+  @override
+  String get backupExportJsonSubtitle => 'JSON · tiklanadi';
+
+  @override
+  String get backupExportCsvTitle => 'Jadvalga eksport';
+
+  @override
+  String get backupExportCsvSubtitle => 'CSV · faqat oʻqish';
+
+  @override
+  String get backupImportTitle => 'Nusxani yuklash';
+
+  @override
+  String get backupImportSubtitle => 'Birlashadi · yangisi ustun';
+
+  @override
+  String get backupCsvNotice =>
+      'Jadval oʻchirishlar va sozlamalarni saqlamaydi, shuning uchun bu faqat eksport — tiklash JSON nusxadan boʻladi.';
+
+  @override
+  String get backupImportConfirmTitle => 'Bu nusxa yuklansinmi?';
+
+  @override
+  String get backupImportConfirmMessage =>
+      'Yozuvlar birlashtiriladi, har birining yangi versiyasi ustun boʻladi. Nusxadan keyin qoʻshgan narsalaringiz yoʻqolmaydi, ayni faylni ikkinchi marta yuklash esa hech narsani oʻzgartirmaydi.';
+
+  @override
+  String get backupImportConfirmAction => 'Yuklash';
+
+  @override
+  String backupSavedSnack({required String file}) {
+    return '$file saqlandi';
+  }
+
+  @override
+  String get backupCancelledSnack => 'Hech narsa saqlanmadi';
+
+  @override
+  String backupFailedSnack({required String message}) {
+    return 'Saqlash boʻlmadi: $message';
+  }
+
+  @override
+  String backupImportFailedSnack({required String message}) {
+    return 'Faylni oʻqib boʻlmadi: $message';
+  }
+
+  @override
+  String get backupImportNothingSnack =>
+      'Birlashtirishga narsa yoʻq — maʼlumotlar allaqachon yangi';
+
+  @override
+  String backupImportedSnack({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count yozuv birlashtirildi',
+      one: '$count yozuv birlashtirildi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String backupImportSkippedSnack({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count notoʻgʻri yozuv oʻtkazib yuborildi',
+      one: '$count notoʻgʻri yozuv oʻtkazib yuborildi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountOpeningBalanceInvalid => 'Bu son emas';
 }

@@ -48,10 +48,18 @@ export 'drive/drive_sync_engine.dart'
         SyncOffline,
         SyncError,
         SyncErrorCode;
+export 'backup/backup_file.dart'
+    show BackupFile, BackupFileTransport, PickedBackupFile;
+export 'backup/backup_service.dart'
+    show BackupImportException, BackupService, kCsvHeader;
+export 'drive/snapshot_merge.dart' show SnapshotMergeResult;
 export 'repo/accounts_repository.dart' show AccountBalance;
 export 'repo/summaries_repository.dart' show PeriodTotals, CategoryTotal;
 import '../core/constants.dart';
 import '../core/dates.dart';
+import 'backup/backup_service.dart';
+import 'backup/file_picker_transport.dart';
+import 'backup/backup_file.dart';
 import 'db/database.dart';
 import 'drive/drive_sync_engine.dart';
 import 'repo/accounts_repository.dart';
@@ -129,6 +137,25 @@ final accountsRepoProvider = Provider<AccountsRepository>((ref) {
     onMutation: ref.watch(syncEngineProvider).scheduleSync,
   );
 });
+
+/// Export / import. Writes and reads the SAME snapshot format the Drive sync
+/// uses — a backup file is a peer snapshot (docs/ARCHITECTURE.md).
+///
+/// Wired to `scheduleSync` like every other mutating repository: an import
+/// that landed rows has to reach Drive, or the restore would live on this
+/// device only.
+final backupServiceProvider = Provider<BackupService>((ref) {
+  return BackupService(
+    ref.watch(databaseProvider),
+    onMutation: ref.watch(syncEngineProvider).scheduleSync,
+  );
+});
+
+/// The file picker / file writer. Overridden in tests with a fake so nothing
+/// above `lib/data/` needs a platform channel.
+final backupTransportProvider = Provider<BackupFileTransport>(
+  (ref) => const FilePickerBackupTransport(),
+);
 
 // ---- app state ---------------------------------------------------------------
 

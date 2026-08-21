@@ -692,4 +692,200 @@ class AppLocalizationsRu extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get accountsTitle => 'Счета';
+
+  @override
+  String get accountsTotalLabel => 'ВСЕГО НА СЧЕТАХ';
+
+  @override
+  String get accountsEmptyTitle => 'Нет счетов';
+
+  @override
+  String get accountsEmptyMessage =>
+      'Добавьте кошелёк, карту или копилку — и увидите, где лежат деньги.';
+
+  @override
+  String get accountNew => 'Новый счёт';
+
+  @override
+  String get accountEdit => 'Изменить счёт';
+
+  @override
+  String get accountCreate => 'Создать счёт';
+
+  @override
+  String get accountNameHint => 'Название счёта';
+
+  @override
+  String get accountEmojiLabel => 'Значок';
+
+  @override
+  String get accountColorLabel => 'Цвет';
+
+  @override
+  String get accountKindLabel => 'Тип';
+
+  @override
+  String get accountKindCash => 'Наличные';
+
+  @override
+  String get accountKindBank => 'Карта';
+
+  @override
+  String get accountKindSavings => 'Накопления';
+
+  @override
+  String get accountKindInvestment => 'Инвестиции';
+
+  @override
+  String get accountOpeningBalanceLabel => 'Начальный баланс';
+
+  @override
+  String get accountOpeningBalanceHelp =>
+      'Сколько было на счёте до начала учёта. Долг по карте пишется с минусом.';
+
+  @override
+  String get accountArchive => 'В архив';
+
+  @override
+  String get accountArchiveConfirmTitle => 'Убрать счёт в архив?';
+
+  @override
+  String accountArchiveConfirmMessage({required String name}) {
+    return '$name исчезнет из списков выбора. Все записи по нему останутся в истории.';
+  }
+
+  @override
+  String accountArchivedSnack({required String name}) {
+    return '$name — в архиве';
+  }
+
+  @override
+  String get accountsDefaultLabel => 'Бот записывает в';
+
+  @override
+  String get accountsDefaultHelp =>
+      'Всё, что вы пишете боту, попадает сюда — чтобы он ничего не переспрашивал.';
+
+  @override
+  String get accountDefaultBadge => 'Бот';
+
+  @override
+  String accountSendTo({required String name}) {
+    return 'Отправить в $name';
+  }
+
+  @override
+  String get accountsMoveMoney => 'Перевести';
+
+  @override
+  String get settingsAccountsValue => 'Балансы и счёт по умолчанию';
+
+  @override
+  String get commonTransfer => 'Перевод';
+
+  @override
+  String get entryAddTransfer => 'Перевести';
+
+  @override
+  String get entryFromAccount => 'Откуда';
+
+  @override
+  String get entryToAccount => 'Куда';
+
+  @override
+  String get entryAccountLabel => 'Счёт';
+
+  @override
+  String get entryTransferPickTwo => 'Выберите два разных счёта';
+
+  @override
+  String get entryTransferNoteHint => 'Для чего это?';
+
+  @override
+  String get settingsBackupSection => 'Резервная копия';
+
+  @override
+  String get backupExportJsonTitle => 'Сохранить копию';
+
+  @override
+  String get backupExportJsonSubtitle => 'JSON · можно восстановить';
+
+  @override
+  String get backupExportCsvTitle => 'Экспорт в таблицу';
+
+  @override
+  String get backupExportCsvSubtitle => 'CSV · только для чтения';
+
+  @override
+  String get backupImportTitle => 'Загрузить копию';
+
+  @override
+  String get backupImportSubtitle => 'Объединение · новое важнее';
+
+  @override
+  String get backupCsvNotice =>
+      'Таблица не хранит удаления и настройки, поэтому это только экспорт — восстанавливать нужно из копии JSON.';
+
+  @override
+  String get backupImportConfirmTitle => 'Загрузить эту копию?';
+
+  @override
+  String get backupImportConfirmMessage =>
+      'Записи объединяются, побеждает более новая версия каждой. Ничего, добавленного после копии, не потеряется, а повторная загрузка того же файла ничего не изменит.';
+
+  @override
+  String get backupImportConfirmAction => 'Загрузить';
+
+  @override
+  String backupSavedSnack({required String file}) {
+    return 'Сохранено: $file';
+  }
+
+  @override
+  String get backupCancelledSnack => 'Ничего не сохранено';
+
+  @override
+  String backupFailedSnack({required String message}) {
+    return 'Не удалось сохранить: $message';
+  }
+
+  @override
+  String backupImportFailedSnack({required String message}) {
+    return 'Не удалось прочитать файл: $message';
+  }
+
+  @override
+  String get backupImportNothingSnack => 'Объединять нечего — данные уже новее';
+
+  @override
+  String backupImportedSnack({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Объединено $count записи',
+      many: 'Объединено $count записей',
+      few: 'Объединено $count записи',
+      one: 'Объединена $count запись',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String backupImportSkippedSnack({required int count}) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Пропущено $count плохие записи',
+      many: 'Пропущено $count плохих записей',
+      few: 'Пропущено $count плохие записи',
+      one: 'Пропущена $count плохая запись',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get accountOpeningBalanceInvalid => 'Это не число';
 }

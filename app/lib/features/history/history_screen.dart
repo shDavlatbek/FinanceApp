@@ -100,14 +100,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           duration: const Duration(seconds: 5),
           action: SnackBarAction(
             label: l10n.commonUndo,
-            onPressed: () => repo.insert(
-              kind: tx.kind,
-              amountMinor: tx.amountMinor,
-              categoryId: tx.categoryId,
-              note: tx.note,
-              occurredAt: occurredAtToLocal(tx.occurredAt),
-              source: tx.source,
-            ),
+            // Clears the tombstone on the SAME row rather than inserting a
+            // copy: a copy loses the account ids and the manual placement, so
+            // undoing a transfer brought back a destination-less transfer.
+            onPressed: () => repo.restore(tx.id),
           ),
         ),
       );
